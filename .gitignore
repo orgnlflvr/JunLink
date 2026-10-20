@@ -1,0 +1,26 @@
+# build output
+bin/
+obj/
+out/
+*.user
+.vs/
+.vscode/
+
+# your own game path
+Local.props
+
+# backups and personal data (never commit these)
+*.bak*
+jun_story_import.txt
+jun_memory.txt
+chat_log.txt
+jun_diary.jsonl
+*.cfg
+
+# the game's own art: exported backgrounds stay on your PC
+jun_backgrounds/*
+!jun_backgrounds/bowling.png
+made_packs/
+
+# python cache
+__pycache__/

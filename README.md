@@ -76,7 +76,7 @@ Until then, F2 and F3 show a checklist of what is still missing. Keep playing; i
 
 ## Backgrounds for stories
 
-Some included stories use the game's own places (bowling alley, karaoke bar, beach). Those pictures are **not** in this repo or the release. Make them from your own copy of the game:
+Some included stories use the game's own places (bowling alley, night cafe). Without them, a drawn stand-in or the street is used. Those pictures are **not** in this repo or the release. Make them from your own copy of the game:
 
 ```
 pip install UnityPy
@@ -85,6 +85,16 @@ python "UserData\JunLink\tools\export_backgrounds.py" "C:\path\to\your\game"
 
 > [!CAUTION]
 > The exported pictures belong to the game. Keep them on your PC. Never upload them, put them in a story pack, or open a pull request with them.
+
+## Included example stories
+
+| Story | What it shows |
+| --- | --- |
+| **Example: One Bowling Throw** | The smallest minigame story: one throw of the game's timing bar, three outcomes |
+| **Strike Night: The Gauntlet** | Full bowling matches: `@score reset`, several throws, `@total` for win / tie / lose, rematches |
+| **Not Today, Melissa** | A minigame as story tension: three holds decide how her what-if night ends |
+
+Play them with F3, or open them in the story editor to see how they're built.
 
 ## Writing your own stories
 

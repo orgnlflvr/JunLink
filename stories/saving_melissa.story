@@ -1,8 +1,8 @@
 title: Not Today, Melissa
 // A what-if story: late at night Melissa sets her own self-destruct, and Anon and Jun go to stop her.
-// Jun links to Melissa's core and holds her shutdown back with the game's timing bar (@minigame skillcheck) while you talk to her.
-// Three holds, each gives up to 10 points. 18 or more saves her cleanly, 10 or more saves her barely, less lets you try again.
-// Needs plugin v5.20a or newer (@minigame, @score, @total). Places: outside, shop (built in), cafenight (from tools\export_backgrounds.py).
+// EXAMPLE of a minigame as story tension: Jun holds Melissa's core back with the timing bar while you talk to her.
+// Three holds, each gives up to 10 points. @total: 18 or more saves her cleanly, 10 or more saves her barely, less lets you try again.
+// Places: outside, shop (built in), cafenight (from tools\export_backgrounds.py; without it the street is used).
 // This story is a what-if. It does not follow or spoil the game's own story for Melissa.
 
 # start

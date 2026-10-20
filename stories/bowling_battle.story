@@ -1,9 +1,8 @@
 title: Strike Night: The Gauntlet
 // A bowling tournament against everyone, one after another: Annalie, Shanice, Melissa, and Jun as the final boss.
-// Every throw is the game's own timing bar (@minigame skillcheck). Each match is 3 frames; beat your opponent's total to go on.
-// Needs plugin v5.20a (@minigame, @score reset, @total) and bowling.png in jun_backgrounds.
-// Opponent totals (out of 30): Annalie 16, Shanice 21, Melissa 24, Jun 26. Bar difficulty per opponent: 1, 2.5, 4, 6 (needs plugin v5.20c).
-// Positions are first guesses: opponent at 0.6, Jun on the left.
+// EXAMPLE of a full match: @score reset at the start of each match, three @minigame throws, then @total decides win / tie / lose.
+// Opponent totals (out of 30): Annalie 16, Shanice 21, Melissa 24, Jun 26. Bar difficulty per opponent: 1, 2.5, 4, 6; sudden death a bit harder.
+// Uses jun_backgrounds\bowling.png (a drawn stand-in is included; tools\export_backgrounds.py swaps in the game's real bowling alley).
 
 # start
 @background bowling
