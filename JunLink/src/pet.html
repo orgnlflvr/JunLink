@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jun - pet view</title>
+<link rel="stylesheet" href="/fonts.css">
+<style>
+:root{--bg:#1b1226;--fg:#f1eaff;--mut:#a99bc4;--acc:#ffe23a;--crim:#d3104f;--panel:#22103b}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:600 14px/1.4 Montserrat,Segoe UI,system-ui,Arial,sans-serif;display:flex;flex-direction:column}
+button,input,select{font-family:inherit}
+#bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:#0006}
+#bar label{display:flex;gap:5px;align-items:center;color:var(--mut)}
+#bar select,#bar input[type=range]{accent-color:var(--acc)}
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;overflow:hidden}
+#stage.checker{background-color:#fff;background-image:linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%),linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%);background-size:24px 24px;background-position:0 0,12px 12px}
+canvas{display:block;cursor:pointer}
+#msg{position:absolute;top:10px;left:0;right:0;text-align:center;color:#222;background:#fffd;margin:0 auto;width:fit-content;padding:4px 10px;border-radius:6px;z-index:3}
+#bubble{position:absolute;z-index:2;max-width:min(360px,80vw);background:#fff;color:#1a1024;border:3px solid var(--panel);box-shadow:4px 4px 0 #0005;padding:8px 12px 9px;display:none;transform:translateX(-50%);cursor:pointer;font-size:14px;font-weight:600;white-space:pre-wrap;word-wrap:break-word}
+#bubble b{font-weight:800;position:absolute;left:-3px;top:-22px;background:var(--crim);color:#fff;font-size:12px;letter-spacing:.06em;padding:1px 10px;border:3px solid var(--panel);border-bottom:0}
+#bubble.think{opacity:.8;font-style:italic}
+#chat{display:flex;gap:8px;padding:8px 12px;background:#0007}
+#chat input{flex:1;background:#12081f;color:var(--fg);border:0;border-bottom:2px solid var(--crim);padding:9px 10px;font:inherit;outline:none}
+#chat button{background:#3f1f78;color:#fff;border:0;padding:0 18px;font:inherit;font-weight:700;cursor:pointer}
+#chat button:disabled{opacity:.5;cursor:wait}
+#note{padding:4px 12px 8px;color:var(--mut);font-size:12px;background:#0007}
+</style></head><body>
+<div id="bar">
+  <label>Background <select id="bg"><option value="checker">checkerboard (see transparency)</option><option value="#ffffff">white</option><option value="#000000">black</option><option value="#00ff00">green</option><option value="#ff66cc">pink</option><option value="#20242b">dark desktop</option></select></label>
+  <label><input type="checkbox" id="fix" checked> fix dark edges</label>
+  <label><input type="checkbox" id="talk" checked> she answers clicks</label>
+  <label>Size <input type="range" id="zoom" min="30" max="100" value="60"></label>
+  <span id="info" style="color:var(--mut)"></span>
+</div>
+<div id="stage" class="checker"><canvas id="c" width="10" height="10"></canvas><div id="bubble"><b>JUN</b><span id="btxt"></span></div><div id="msg">waiting for the game...</div></div>
+<form id="chat" autocomplete="off"><input id="said" placeholder="Say something to Jun..." maxlength="500"><button id="send">Send</button></form>
+<div id="note">Click her head or body to get a reaction. Type below to talk to her (uses the same model and memory as the normal chat page). The game has to be running with a save loaded.</div>
+<script>
+const $=id=>document.getElementById(id);
+const H={'X-Panel':'1','Content-Type':'application/json'};
+const cv=$('c'), cx=cv.getContext('2d',{willReadFrequently:true});
+let lastSeq=-1, frames=0, t0=performance.now();
+function saved(k,d){try{return localStorage.getItem(k)||d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+$('bg').value=saved('petBg','checker'); $('fix').checked=saved('petFix','1')==='1'; $('talk').checked=saved('petTalk','1')==='1'; $('zoom').value=saved('petZoom','60');
+function applyBg(){const v=$('bg').value; const st=$('stage'); if(v==='checker'){st.className='checker';st.style.background='';} else {st.className='';st.style.background=v;} save('petBg',v);}
+$('bg').onchange=applyBg; applyBg();
+$('fix').onchange=()=>save('petFix',$('fix').checked?'1':'0');
+$('talk').onchange=()=>save('petTalk',$('talk').checked?'1':'0');
+function applyZoom(){cv.style.height=$('zoom').value+'%';cv.style.width='auto';save('petZoom',$('zoom').value);placeBubble();}
+$('zoom').oninput=applyZoom; applyZoom();
+window.addEventListener('resize',placeBubble);
+
+// ---- speech bubble ----
+let hideTimer=null;
+function placeBubble(){
+  const b=$('bubble'); if(b.style.display==='none') return;
+  const r=cv.getBoundingClientRect(), s=$('stage').getBoundingClientRect();
+  let x=r.left+r.width/2-s.left, y=r.top-s.top+r.height*0.04+22;
+  y=Math.max(26,Math.min(y,s.height-b.offsetHeight-8));
+  b.style.left=x+'px'; b.style.top=y+'px';
+}
+function say(text,think,secs){
+  clearTimeout(hideTimer);
+  const b=$('bubble'); $('btxt').textContent=text; b.className=think?'think':''; b.style.display='block'; placeBubble();
+  if(!think) hideTimer=setTimeout(()=>{b.style.display='none'}, (secs||(3500+text.length*55)));
+}
+$('bubble').onclick=()=>{$('bubble').style.display='none';clearTimeout(hideTimer);};
+
+// ---- reactions ----
+function react(tags){ if(tags) fetch('/api/pet/react',{method:'POST',headers:H,body:JSON.stringify({tags})}).catch(()=>{}); }
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const HEAD=[['shy happy','Head contact detected. Acceptable.'],['veryhappy','That was a pleasant input. ...Do it again.'],['shy','Recalibrating. My processor is warm.']];
+const BODY=[['surprised','Yes? I was idle.'],['wave','Poke registered. Hello.'],['happy','I am not a touchscreen. ...Carry on.'],['surprised','Unexpected contact. Fascinating.']];
+let lastClick=0;
+cv.addEventListener('click',e=>{
+  const now=Date.now(); if(now-lastClick<1200) return;
+  const r=cv.getBoundingClientRect();
+  const x=Math.floor((e.clientX-r.left)*cv.width/r.width), y=Math.floor((e.clientY-r.top)*cv.height/r.height);
+  let a=0; try{a=cx.getImageData(x,y,1,1).data[3];}catch(err){}
+  if(a<20) return;
+  lastClick=now;
+  const c=pick(y<cv.height*0.30?HEAD:BODY);
+  react(c[0]); if($('talk').checked && !busy) say(c[1],false,2800);
+});
+
+// ---- chat ----
+let busy=false;
+function split(acc){
+  let tags='', text=acc;
+  const m=acc.match(/^\s*((?:\[[A-Za-z .\-_]+\]\s*)+)/);
+  if(m){ tags=[...m[1].matchAll(/\[([A-Za-z .\-_]+)\]/g)].map(t=>t[1].toLowerCase().replace(/[^a-z]/g,'')).join(' '); text=acc.slice(m[0].length); }
+  text=text.replace(/\*[^*]*\*/g,' ').replace(/[ \t]{2,}/g,' ').trim();
+  return {tags,text};
+}
+$('chat').onsubmit=async ev=>{
+  ev.preventDefault(); const t=$('said').value.trim(); if(!t||busy) return;
+  busy=true; $('send').disabled=true; $('said').value=''; say('...',true);
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:H,body:JSON.stringify({message:t})});
+    const rd=r.body.getReader(), dec=new TextDecoder(); let acc='';
+    for(;;){
+      const {done,value}=await rd.read(); if(done) break;
+      acc+=dec.decode(value,{stream:true});
+      if(/^\s*\[[^\]]*$/.test(acc)) continue;          // a tag is still arriving
+      if(/^\s*\[(busy|error|no reply)\]/i.test(acc)) continue;
+      const s=split(acc); if(s.text) say(s.text,true);
+    }
+    if(/^\s*\[busy\]/i.test(acc)){ say('(she is still thinking, try again in a moment)',false,3500); }
+    else if(/^\s*\[(error|no reply)\]/i.test(acc)){ say('(she cannot answer right now)',false,3500); }
+    else { const f=split(acc); if(f.tags) react(f.tags); say(f.text||acc.trim()||'...',false); }
+  }catch(e){ say('(cannot reach the game)',false,3000); }
+  busy=false; $('send').disabled=false; $('said').focus();
+};
+
+// ---- the picture ----
+async function loop(){
+  let wait=30;
+  try{
+    const r=await fetch('/pet/frame.png?seq='+lastSeq,{cache:'no-store'});
+    if(r.status===200){
+      lastSeq=parseInt(r.headers.get('X-Seq')||'-1',10);
+      const bmp=await createImageBitmap(await r.blob(),{premultiplyAlpha:'none'});
+      if(cv.width!==bmp.width||cv.height!==bmp.height){cv.width=bmp.width;cv.height=bmp.height;placeBubble();}
+      cx.clearRect(0,0,cv.width,cv.height); cx.drawImage(bmp,0,0);
+      if($('fix').checked){
+        const im=cx.getImageData(0,0,cv.width,cv.height), d=im.data;
+        for(let i=0;i<d.length;i+=4){const a=d[i+3]; if(a>0&&a<255){const k=255/a; d[i]=Math.min(255,d[i]*k); d[i+1]=Math.min(255,d[i+1]*k); d[i+2]=Math.min(255,d[i+2]*k);}}
+        cx.putImageData(im,0,0);
+      }
+      $('msg').style.display='none'; frames++;
+      const now=performance.now(); if(now-t0>1000){$('info').textContent=frames+' new pictures/s - '+cv.width+'x'+cv.height; frames=0; t0=now;}
+    } else if(r.headers.get('X-Pet')==='none'){
+      const i=await (await fetch('/api/pet/info',{cache:'no-store'})).json();
+      $('msg').style.display='block'; $('msg').textContent=i.status; wait=700;
+    }
+  }catch(e){ $('msg').style.display='block'; $('msg').textContent='cannot reach the game (is it running?)'; wait=1500; }
+  setTimeout(loop,wait);
+}
+loop();
+</script></body></html>

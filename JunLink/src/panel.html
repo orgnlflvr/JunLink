@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Jun Link</title>
+<style>
+:root{color-scheme:dark;--bg:#14101c;--card:#1f1830;--line:#352a52;--fg:#eee;--mut:#a99bc7;--acc:#d6336c}
+*{box-sizing:border-box}
+body{margin:0;font:15px system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--fg);display:grid;grid-template-columns:1.4fr 1fr;gap:12px;padding:12px;height:100vh}
+@media(max-width:800px){body{grid-template-columns:1fr;height:auto}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;min-height:0}
+h2{margin:0 0 8px;font-size:16px}
+#log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;min-height:260px}
+.m{padding:8px 10px;border-radius:10px;max-width:92%;white-space:pre-wrap;word-wrap:break-word}
+.u{align-self:flex-end;background:#3b2a63}
+.b{align-self:flex-start;background:#2a2140;border:1px solid var(--line)}
+.row{display:flex;gap:6px;margin-top:8px;align-items:center}
+input,button{font:inherit;color:inherit;background:#2a2140;border:1px solid var(--line);border-radius:8px;padding:8px}
+input[type=text],input[type=number]{flex:1;min-width:0}
+button{cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.p{background:var(--acc);border-color:var(--acc)}
+.stat{display:grid;grid-template-columns:110px 1fr 46px 56px;gap:6px;align-items:center;margin:4px 0}
+.mut{color:var(--mut);font-size:13px}
+#right{overflow:auto}
+</style>
+<script src="/common.js"></script>
+</head>
+<body>
+<div class='card'>
+  <h2 id='title'>Chat</h2>
+  <div id='log'></div>
+  <div class='row'>
+    <input type='text' id='msg' placeholder='Say something...' autocomplete='off'>
+    <button class='p' id='sendBtn'>Send</button>
+    <button id='clearBtn'>Clear</button>
+  </div>
+</div>
+<div class='card' id='right'>
+  <h2>Game</h2>
+  <div id='status' class='mut'>Waiting for the game...</div>
+  <div id='notReady' style='display:none;margin:10px 0;padding:10px 12px;border-left:4px solid #d3104f;background:#d3104f1f;white-space:pre-line'></div>
+  <div class='row'><button id='openChat'>Open chat window in the game</button><button id='zoomBtn'>Zoom in/out</button></div>
+  <div class='row'><a href='/stories' style='color:#d6336c'>Story editor &rarr; write your own storylines</a></div>
+  <div class='row'><a href='/diary' style='color:#d6336c'>Jun's diary &rarr; what she wrote about each day</a></div>
+  <div class='row'><a href='/settings' style='color:#d6336c'>Settings &rarr; every option of the mod (F8 in game)</a></div>
+  <div class='row'><a href='/packs' style='color:#d6336c'>Story packs &rarr; install and share stories</a></div>
+  <div id='editor' style='display:none'>
+  <div class='row'><input type='number' id='money' value='2000000000'><button id='moneySet'>Set money</button><button id='moneyAdd'>+1M</button></div>
+  <div class='row'><input type='number' id='tokens' value='1000000'><button id='tokensSet'>Set tokens</button></div>
+  <h2 style='margin-top:14px'>Stats</h2>
+  <div id='stats'></div>
+  <div class='row'><button id='allFull'>All stats = 100%</button></div>
+  </div>
+  <div id='result' class='mut' style='margin-top:10px'></div>
+  <details style='margin-top:10px'><summary class='mut'>Debug</summary><pre id='debug' class='mut' style='white-space:pre-wrap'></pre></details>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const H={'X-Panel':'1','Content-Type':'application/json'};
+const api=(p,b)=>fetch(p,{method:'POST',headers:H,body:JSON.stringify(b||{})});
+const cmd=(action,value)=>api('/api/cmd',{action:action,value:value});
+let busy=false, bot='Jun', player='Anon';
+
+function add(cls,text){const d=document.createElement('div');d.className='m '+cls;d.textContent=text;$('log').appendChild(d);$('log').scrollTop=1e9;return d;}
+
+async function send(){
+  const t=$('msg').value.trim(); if(!t||busy) return;
+  $('msg').value=''; add('u',t); const b=add('b','...'); busy=true;
+  try{
+    const r=await api('/api/chat',{message:t});
+    const rd=r.body.getReader(); const dec=new TextDecoder(); let s='';
+    while(true){const x=await rd.read(); if(x.done) break; s+=dec.decode(x.value,{stream:true}); b.textContent=s; $('log').scrollTop=1e9;}
+  }catch(e){b.textContent='Error: '+e.message;}
+  busy=false;
+}
+$('sendBtn').onclick=send;
+$('msg').addEventListener('keydown',e=>{if(e.key==='Enter') send();});
+$('clearBtn').onclick=async()=>{await api('/api/clear'); $('log').innerHTML='';};
+
+$('openChat').onclick=()=>cmd('openchat',0);
+$('zoomBtn').onclick=()=>cmd('zoom',0);
+$('moneySet').onclick=()=>cmd('money',Number($('money').value));
+$('moneyAdd').onclick=()=>cmd('moneyAdd',1000000);
+$('tokensSet').onclick=()=>cmd('tokens',Number($('tokens').value));
+
+const STATS=[['health','Health'],['stamina','Stamina'],['mental','Mental health'],['satiation','Satiation'],['mood','Mood']];
+STATS.forEach(function(p){
+  const k=p[0], n=p[1]; const d=document.createElement('div'); d.className='stat';
+  d.innerHTML="<span>"+n+"</span><input type='range' min='0' max='100' value='100' id='r_"+k+"'><span id='v_"+k+"' class='mut'>100</span><button id='b_"+k+"'>Set</button>";
+  $('stats').appendChild(d);
+  $('r_'+k).oninput=()=>{$('v_'+k).textContent=$('r_'+k).value;};
+  $('b_'+k).onclick=()=>cmd(k,Number($('r_'+k).value)/100);
+});
+$('allFull').onclick=()=>STATS.forEach(p=>cmd(p[0],1));
+
+const pct=v=>Math.round(v*100)+'%';
+async function poll(){
+  try{
+    const s=await (await fetch('/api/state')).json();
+    bot=s.bot; player=s.player; $('title').textContent='Chat with '+bot;
+    $('status').textContent=s.loaded
+      ? ('Day '+s.day+'  |  Money '+s.money.toLocaleString()+'  |  Tokens '+s.tokens.toLocaleString()+'\nHealth '+pct(s.health)+'  Stamina '+pct(s.stamina)+'  Mental '+pct(s.mental)+'  Satiation '+pct(s.satiation)+'  Mood '+pct(s.mood)+(s.rentDue?'\nRent is due':''))
+      : 'No game loaded yet. Load a save in the game.';
+    $('status').style.whiteSpace='pre-line';
+    $('editor').style.display=s.editor?'':'none';
+    const nr=$('notReady');
+    if(s.loaded&&!s.ready){nr.style.display='';nr.textContent=bot+" isn't ready for AI chat yet.\nStill needed: "+(s.missing||'')+".\nKeep playing; it unlocks by itself (limits are in Settings > Requirements).";}
+    else nr.style.display='none';
+    $('result').textContent=s.result||'';
+    $('debug').textContent=(s.debug||'(no errors)')+(s.emotes?'\n\nEmotes (slot/item): '+s.emotes:'');
+  }catch(e){$('status').textContent='Cannot reach the plugin. Is the game running?';}
+  setTimeout(poll,1000);
+}
+(async function init(){
+  try{const h=await (await fetch('/api/history')).json(); h.forEach(m=>add(m.role==='user'?'u':'b',m.text));}catch(e){}
+  poll();
+})();
+</script>
+<script src="/gameui.js"></script>
+</body>
+</html>

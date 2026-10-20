@@ -1,0 +1,8 @@
+<!-- Copy this file to Local.props (same folder) and put your game folder in it.
+     The game folder is the one with MelonLoader\ and Mods\ inside, started once with MelonLoader 0.7.3.
+     Local.props is in .gitignore, so your own path never ends up in the repo. -->
+<Project>
+  <PropertyGroup>
+    <GameDir>C:\Path\To\My Dystopian Robot Girlfriend</GameDir>
+  </PropertyGroup>
+</Project>

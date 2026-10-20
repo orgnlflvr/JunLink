@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jun's diary</title>
+<link rel="stylesheet" href="/fonts.css">
+<style>
+:root{--bg:#1b1226;--card:#241733;--paper:#2c1d3f;--fg:#f1eaff;--mut:#a99bc4;--acc:#d6336c;--line:#3a2a52}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 Montserrat,Segoe UI,system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0}
+h1{font-size:18px;margin:0 12px 0 0}
+.mut{color:var(--mut);font-size:13px}
+button{font:inherit;color:inherit;background:#2a2140;border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.p{background:var(--acc);border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+a{color:var(--acc)}
+main{max-width:720px;margin:0 auto;padding:16px}
+.entry{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:0 0 14px}
+.entry h2{font-size:15px;margin:0 0 2px;letter-spacing:.04em;text-transform:uppercase;color:var(--acc)}
+.entry .when{font-size:12px;color:var(--mut);margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.entry .when button{padding:2px 8px;font-size:12px}
+.entry p{margin:0 0 10px;font:16px/1.65 Georgia,'Times New Roman',serif;white-space:pre-wrap}
+.empty{text-align:center;padding:40px 10px;color:var(--mut)}
+#status{min-height:1.4em}
+</style><script src="/common.js"></script>
+</head><body>
+<header>
+  <h1 id="title">Jun's diary</h1>
+  <span class="mut" id="today">no save loaded</span>
+  <button class="p" id="write" disabled>Write today's entry now</button>
+  <span class="mut" id="status"></span>
+  <span style="flex:1"></span>
+  <a href="/">panel</a>
+</header>
+<main id="list"><div class="empty">Loading...</div></main>
+<script>
+const $=id=>document.getElementById(id);
+const H={'X-Panel':'1','Content-Type':'application/json'};
+let last=null, timer=null;
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function load(){
+  let j; try{ j=await (await fetch('/api/diary')).json(); }catch(e){ $('status').textContent='the game is not running'; return; }
+  const bot=j.bot||'Jun';
+  $('title').textContent=bot+"'s diary"; document.title=bot+"'s diary";
+  $('today').textContent=j.day>0?('today is day '+j.day):'no save loaded';
+  $('write').disabled=!(j.day>0)||j.writing;
+  $('write').textContent=j.writing?'she is writing...':"Write today's entry now";
+  $('status').textContent=j.enabled?(j.status||''):'diary is off (Diary/Enabled in the cfg)';
+  const key=JSON.stringify(j.entries);
+  if(key!==last){
+    last=key;
+    $('list').innerHTML=j.entries.length?j.entries.map(e=>
+      '<div class="entry"><h2>Day '+e.day+'</h2><div class="when">written '+esc(e.written)+
+      ' <button data-d="'+e.day+'">write again</button></div>'+
+      esc(e.text).split(/\n\s*\n/).map(p=>'<p>'+p+'</p>').join('')+'</div>').join('')
+      :'<div class="empty">No entries yet. She writes one each time a new day starts in the game, or press "Write today\'s entry now".</div>';
+    $('list').querySelectorAll('button[data-d]').forEach(b=>b.onclick=async()=>{ const M=window.MDRG; if(M && !(await M.ask('Rewrite the entry for day '+b.dataset.d+'? The current text is replaced by a new one.',{ok:'Rewrite',title:'Write again'}))) return; write(+b.dataset.d); });
+  }
+  clearTimeout(timer); timer=setTimeout(load, j.writing?1500:8000);
+}
+async function write(day){
+  $('write').disabled=true;
+  try{
+    const r=await (await fetch('/api/diary/write',{method:'POST',headers:H,body:JSON.stringify(day?{day}:{})})).json();
+    if(!r.ok){ $('status').textContent=r.error||'could not start'; window.MDRG&&MDRG.toast(r.error||'Could not start writing.','bad'); }
+    else window.MDRG&&MDRG.toast('She is writing day '+r.day+'...','info');
+  }catch(e){ $('status').textContent='the game is not running'; }
+  setTimeout(load,400);
+}
+$('write').onclick=()=>write(0);
+load();
+</script>
+<script src="/gameui.js"></script>
+</body></html>

@@ -1,0 +1,90 @@
+/* "Game UI" theme for the Jun Link pages: square cut corners, the game's purple / crimson colours and its Montserrat-style font.
+   Only applies while <html class="gameui"> (the toggle button in the corner of every page). */
+@import url('/fonts.css');
+
+html.gameui{
+  --g-bg:#0d0517; --g-panel:#22103b; --g-panel2:#2d1550; --g-btn:#3f1f78; --g-btn-hi:#5b2ea6;
+  --g-line:#4a2a7a; --g-text:#ffffff; --g-mut:#b9a3dc;
+  --g-crimson:#d3104f; --g-yellow:#ffe23a; --g-blue:#8fd0ff; --g-green:#6dc061;
+  /* remap the variables the pages already use */
+  --bg:var(--g-bg); --card:var(--g-panel); --panel:var(--g-panel); --panel2:var(--g-panel2);
+  --line:var(--g-line); --fg:var(--g-text); --text:var(--g-text); --mut:var(--g-mut);
+  --acc:var(--g-crimson); --acc2:var(--g-yellow); --ok:var(--g-green); --bad:#ff5a7a; --jun:var(--g-blue);
+}
+html.gameui, html.gameui body, html.gameui input, html.gameui button, html.gameui select, html.gameui textarea{
+  font-family:'Montserrat','Segoe UI',system-ui,sans-serif;
+}
+html.gameui body{
+  background:
+    linear-gradient(135deg, rgba(211,16,79,.10) 0 1px, transparent 1px) 0 0/28px 28px,
+    radial-gradient(ellipse at 20% 0%, #2a0f4a 0%, var(--g-bg) 60%);
+  color:var(--g-text); font-weight:500;
+}
+/* everything square, with the game's cut corners on the big boxes */
+html.gameui *{ border-radius:0 !important; }
+html.gameui .card{
+  background:var(--g-panel); border:0; border-left:4px solid var(--g-crimson);
+  clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+html.gameui header{ background:var(--g-panel); border-bottom:3px solid var(--g-crimson); }
+html.gameui h1, html.gameui h2{ font-weight:800; letter-spacing:.02em; }
+html.gameui h2{
+  display:inline-block; align-self:flex-start; background:var(--g-crimson); color:#fff; padding:3px 12px 3px 10px;
+  clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%); text-transform:none; font-size:13px;
+}
+html.gameui .card h2{ color:#fff; }
+html.gameui a, html.gameui a:visited{ color:var(--g-yellow) !important; font-weight:600; }
+
+/* buttons: purple block with the little white corner mark the game's buttons have */
+html.gameui button{
+  color:#fff; font-weight:700; border:0; padding:8px 14px;
+  background:linear-gradient(45deg,#fff 50%,transparent 50%) left bottom/9px 9px no-repeat, var(--g-btn);
+  transition:background-color .12s, transform .06s;
+}
+html.gameui button:hover{ background-color:var(--g-btn-hi); border:0; }
+html.gameui button:active{ transform:translateY(1px); }
+html.gameui button.p, html.gameui button.pri, html.gameui .bgs button.sel, html.gameui #list button.on{
+  background:linear-gradient(45deg,#fff 50%,transparent 50%) left bottom/9px 9px no-repeat, var(--g-crimson);
+  color:#fff; border:0;
+}
+html.gameui button.p:hover, html.gameui button.pri:hover{ background-color:#ef1f66; }
+html.gameui button.bad:hover{ color:#fff; background-color:#a30b3d; }
+html.gameui button:disabled{ opacity:.45; cursor:not-allowed; }
+
+/* fields: flat dark boxes with a bottom line instead of a round outline */
+html.gameui input, html.gameui select, html.gameui textarea{
+  background:#150a26; color:#fff; border:0; border-bottom:2px solid var(--g-line); padding:8px 10px; font-weight:500;
+}
+html.gameui input:focus, html.gameui select:focus, html.gameui textarea:focus{ outline:none; border-bottom-color:var(--g-yellow); }
+html.gameui input[type=range]{ accent-color:var(--g-crimson); border:0; background:transparent; }
+html.gameui input[type=checkbox]{ accent-color:var(--g-crimson); }
+html.gameui textarea{ font-family:Consolas,Menlo,monospace; font-weight:400; }
+html.gameui code, html.gameui pre{ background:#150a26; color:var(--g-yellow); }
+
+/* chat bubbles in the panel look like the game's dialogue box */
+html.gameui #log .m{ border:0; padding:10px 14px; }
+html.gameui #log .u{ background:var(--g-btn); border-right:4px solid var(--g-blue); }
+html.gameui #log .b{ background:var(--g-panel2); border-left:4px solid var(--g-crimson); }
+html.gameui .mut{ color:var(--g-mut); }
+html.gameui .ok{ color:var(--g-green); }
+
+/* stats on the panel: the game's yellow / blue / crimson bars */
+html.gameui progress, html.gameui meter{ accent-color:var(--g-yellow); }
+
+/* stage page */
+html.gameui .stage{ background:linear-gradient(180deg,#2a1248,#12081f); border:2px solid var(--g-line); }
+html.gameui .m{ border-color:var(--g-yellow); background:rgba(255,226,58,.10); }
+html.gameui .m.jun{ border-color:var(--g-blue); background:rgba(143,208,255,.12); }
+html.gameui .m .lab{ background:var(--g-crimson); color:#fff; font-weight:700; }
+html.gameui .m .pivot{ background:var(--g-crimson); border-radius:0 !important; transform:rotate(45deg); }
+html.gameui .row{ background:var(--g-panel2); border:0; border-left:3px solid var(--g-line); }
+html.gameui .row.sel{ border-left-color:var(--g-yellow); }
+html.gameui .dot{ background:var(--g-mut); }
+html.gameui .dot.on{ background:var(--g-green); }
+html.gameui .stage .dlg{ border:2px dashed rgba(255,255,255,.3); background:rgba(45,21,80,.55); }
+
+/* scrollbars in the same colours */
+html.gameui ::-webkit-scrollbar{ width:10px; height:10px; }
+html.gameui ::-webkit-scrollbar-track{ background:#150a26; }
+html.gameui ::-webkit-scrollbar-thumb{ background:var(--g-btn); }
+html.gameui ::-webkit-scrollbar-thumb:hover{ background:var(--g-crimson); }

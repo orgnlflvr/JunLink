@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Story packs</title>
+<link rel="stylesheet" href="/fonts.css">
+<style>
+:root{--bg:#1b1226;--card:#241733;--fg:#f1eaff;--mut:#a99bc4;--acc:#d6336c;--line:#3a2a52;--ok:#5fd38d;--warn:#ffc857;--bad:#ff6b8a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 Montserrat,Segoe UI,system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:2}
+h1{font-size:18px;margin:0 8px 0 0}
+h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin:18px 0 8px}
+a{color:var(--acc)}
+.mut{color:var(--mut);font-size:13px}
+code{background:#2a2140;border-radius:4px;padding:1px 5px;font-size:12.5px}
+input,textarea,button{font:inherit;color:inherit;background:#2a2140;border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+button{cursor:pointer}
+button.p{background:var(--acc);border-color:var(--acc);font-weight:600}
+main{max-width:900px;margin:0 auto;padding:4px 16px 24px}
+.pack{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 12px}
+.cover{width:150px;aspect-ratio:16/10;border-radius:8px;background:#2a2140 center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px;text-align:center}
+.pack h3{margin:0;font-size:16px}
+.meta{color:var(--mut);font-size:12.5px;margin:2px 0 8px}
+.pack ul{list-style:none;margin:8px 0 0;padding:0}
+.pack li{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.pack li button{font-size:12px;padding:3px 9px}
+.warn{color:var(--warn);font-size:12.5px;margin-top:6px}
+.bad{color:var(--bad)}
+.ok{color:var(--ok)}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:18px;color:var(--mut)}
+form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px}
+.two{display:grid;grid-template-columns:1fr 1fr 120px;gap:10px}
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px 12px;max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
+.picks label{display:flex;gap:8px;align-items:center}
+input[type=checkbox]{width:17px;height:17px;accent-color:var(--acc);padding:0}
+textarea{min-height:64px;resize:vertical}
+@media (max-width:640px){.pack{grid-template-columns:1fr}.cover{width:100%}.cover.none{display:none}.two{grid-template-columns:1fr}}
+</style><script src="/common.js"></script>
+</head><body>
+<header>
+  <h1>Story packs</h1>
+  <span class="mut">share several stories as one file</span>
+  <span style="flex:1"></span>
+  <a href="/stories">story editor</a> <a href="/">panel</a>
+</header>
+<main>
+  <h2>Installed</h2>
+  <div id="packs"><p class="mut">Loading...</p></div>
+  <p class="mut">To install a pack, put its <code>.storypack</code> file in <code id="folder">jun_stories</code> and reload this page. Its stories show up in F3 and in the story editor. Saving one in the editor makes your own copy; the pack stays as it is.</p>
+
+  <h2>Make a pack</h2>
+  <form id="mk" onsubmit="return false">
+    <div class="two">
+      <input id="name" placeholder="pack name" maxlength="60">
+      <input id="author" placeholder="author">
+      <input id="version" placeholder="version" value="1.0">
+    </div>
+    <textarea id="desc" placeholder="what the stories are about (shown to players)"></textarea>
+    <div class="mut">Stories to put in:</div>
+    <div class="picks" id="picks"></div>
+    <label class="mut">Cover picture (PNG, your own art, optional): <input type="file" id="cover" accept="image/png"></label>
+    <div class="mut">Only the story files and your cover go in. Game pictures never do: players save the backgrounds from their own game with <code>tools\export_backgrounds.py</code>, and this page tells them which ones a pack needs.</div>
+    <div><button class="p" id="make">Make pack</button> <span id="mkst" class="mut"></span></div>
+  </form>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const H={'X-Panel':'1','Content-Type':'application/json'};
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function load(){
+  let j; try{ j=await (await fetch('/api/packs')).json(); }catch(e){ $('packs').innerHTML='<div class="empty">Could not reach the game. Is it running with the mod?</div>'; return; }
+  $('folder').textContent=j.folder||'jun_stories';
+  $('packs').innerHTML=j.packs.length?j.packs.map(p=>
+    '<div class="pack"><div class="cover'+(p.cover?'':' none')+'"'+(p.cover?' style="background-image:url(\'/api/packs/cover?id='+encodeURIComponent(p.id)+'\')"':'')+'>'+(p.cover?'':'no cover')+'</div><div>'+
+    '<h3>'+esc(p.name)+'</h3><div class="meta">'+[p.author&&('by '+esc(p.author)),p.version&&('v'+esc(p.version)),esc(p.file)].filter(Boolean).join(' · ')+'</div>'+
+    (p.description?'<div>'+esc(p.description)+'</div>':'')+
+    (p.error?'<div class="warn bad">'+esc(p.error)+'</div>':'')+
+    (p.missing.length?'<div class="warn">Needs backgrounds you do not have yet: '+p.missing.map(b=>'<code>'+esc(b)+'</code>').join(' ')+'. Run tools\\export_backgrounds.py (or put your own PNG with that name in jun_backgrounds).</div>':(p.backgrounds.length?'<div class="mut ok">'+(p.backgrounds.length===1?'The background it uses is available.':'All '+p.backgrounds.length+' backgrounds it uses are available.')+'</div>':''))+
+    '<ul>'+p.stories.map(s=>'<li><span>'+esc(s.title)+'</span><button data-play="'+esc(s.id)+'">Play in game</button></li>').join('')+'</ul></div></div>').join('')
+    :'<div class="empty">No packs installed yet.</div>';
+  document.querySelectorAll('button[data-play]').forEach(b=>b.onclick=async()=>{
+    try{ await fetch('/api/story/play',{method:'POST',headers:H,body:JSON.stringify({id:b.dataset.play})}); b.textContent='started in game'; }catch(e){ b.textContent='game not running'; }
+  });
+  $('picks').innerHTML=j.own.length?j.own.map(s=>'<label><input type="checkbox" value="'+esc(s.id)+'"> '+esc(s.title)+'</label>').join(''):'<span class="mut">You have no stories of your own yet.</span>';
+}
+function readCover(){
+  const f=$('cover').files[0]; if(!f) return Promise.resolve('');
+  return new Promise((ok,bad)=>{const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=()=>bad(r.error); r.readAsDataURL(f);});
+}
+$('make').onclick=async()=>{
+  const ids=[...document.querySelectorAll('#picks input:checked')].map(x=>x.value);
+  $('mkst').className='mut'; $('mkst').textContent='making...';
+  try{
+    const r=await (await fetch('/api/packs/make',{method:'POST',headers:H,body:JSON.stringify({name:$('name').value,author:$('author').value,version:$('version').value,description:$('desc').value,ids,cover:await readCover()})})).json();
+    if(r.ok){ $('mkst').className='ok'; $('mkst').textContent='saved: '+r.path; }
+    else { $('mkst').className='bad'; $('mkst').textContent=r.error||'could not make the pack'; }
+  }catch(e){ $('mkst').className='bad'; $('mkst').textContent='the game is not running'; }
+};
+load();
+</script>
+<script src="/gameui.js"></script>
+</body></html>

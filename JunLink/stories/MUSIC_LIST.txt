@@ -1,0 +1,120 @@
+MDRG music you can use with @music in stories
+(from your game log; type the name with spaces or underscores, a category name plays the whole category)
+
+== BadEnd  -  dark / bad endings
+   @music BadEnd A Soft Decay
+   @music BadEnd First Time for Everything
+   @music BadEnd There s Always Tomorrow
+   @music BadEnd Demise
+   @music BadEnd Walking Through a Mine Field
+
+== Cooking  -  cooking minigame
+   @music Cooking RAPID COOKING CHALLENGE
+   @music Cooking Air Fryer
+   @music Cooking Pudollarsy Poppin  Pasta
+   @music Cooking Cream N Pie
+   @music Cooking Cocktail
+   @music Cooking Let Him Cook
+   @music Cooking Protein Shake
+
+== Cuddle  -  cuddle scenes, tender / sad
+   @music Cuddle Jun s Song
+   @music Cuddle Take a deep breath
+   @music Cuddle If Only
+   @music Cuddle Steel In Your Socks
+
+== Dates  -  dates with Jun
+   @music Dates She s Real to Me
+   @music Dates Just You and Me
+
+== Fishing  -  fishing, calm
+   @music Fishing Candlelight
+   @music Fishing Rainy Day
+
+== MainMenu  -  main menu, piano
+   @music MainMenu Arabesque
+   @music MainMenu Clair de lune
+
+== Other  -  misc
+   @music Other Juice  Unmuffled   Extended 
+
+== Outside  -  walking outside (Normal = alone, WithBot = with Jun, Riots)
+   @music Outside Normal Make It Snappy
+   @music Outside Normal Polluted Sunshine
+   @music Outside Normal Streets  Slowed 
+   @music Outside Riots ISO Lated
+   @music Outside WithBot Mile High
+   @music Outside WithBot Simulated Happiness
+   @music Outside WithBot Our Time
+
+== PC  -  computer
+   @music PC Exotic Hardware
+
+== Room  -  the room (Day / Day_Late_Game / Night / Low_Sanity / Special)
+   @music Room Day Faded Fate
+   @music Room Day Against All Odds
+   @music Room Day Maybe It Ain t So Bad
+   @music Room Day This Feels Nice
+   @music Room Day Daybreak With You
+   @music Room Day Distraction
+   @music Room Day Keep Going
+   @music Room Day Late Game One Wish
+   @music Room Day Late Game White Dress
+   @music Room Low Sanity God s Loophole
+   @music Room Low Sanity I Am an Orange and I Need to be Peeled
+   @music Room Low Sanity Rainbow Room
+   @music Room Low Sanity The Walls are Melting
+   @music Room Night Valium
+   @music Room Night Working From Home
+   @music Room Night Don t Worry About Me
+   @music Room Night Unfading Clouds
+   @music Room Night Lofi In My Bedroom
+   @music Room Night Focus
+   @music Room Night Spirasomnus
+   @music Room Night Warm Nights
+   @music Room Night Dull Feelings
+   @music Room Night Snake Eyes  v2 
+   @music Room Night Reflection
+   @music Room Special Nightmare
+
+== Serious  -  tense
+   @music Serious Just You Wait
+   @music Serious Danger Around the Corner
+
+== Sex  -  adult scenes (skip for normal stories)
+   @music Sex Ass Effect
+   @music Sex Boner Jam
+   @music Sex CyberHunk 2069
+   @music Sex Death Grip
+   @music Sex Up All Night
+   @music Sex Yogurt Male
+   @music Sex Questionable
+   @music Sex Carrot
+   @music Sex Evox Machine
+   @music Sex Banger
+   @music Sex Sex
+
+== Story  -  the game's story scenes
+   @music Story See It Now
+   @music Story Thank You
+   @music Story Wish Things Were Easier
+   @music Story Moan Choir
+   @music Story Hypersexual
+   @music Story Motoyasu
+   @music Story Fall
+   @music Story Prologue Coincidences
+
+== Themes  -  character themes (Cashier, Lady Annalie, Big Daddy, Landlord, Police, Neighbour, Church...)
+   @music Themes AnnoyingNeighbour Juice  Muffled 
+   @music Themes BigDaddyHurt Night
+   @music Themes Cashier Mystery Meat
+   @music Themes Church Choir Boy Drama
+   @music Themes FishingJoint Blow A Joint
+   @music Themes Lady Annalie Oddly Enough
+   @music Themes Landlord It s Him Again
+   @music Themes Police Jazz On My Face
+
+== Work  -  work
+   @music Work Laid Runner
+
+Note: one BadEnd track has an unreadable internal name; reach it with @music BadEnd.

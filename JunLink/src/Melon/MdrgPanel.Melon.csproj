@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>JunLink</AssemblyName>
+    <AssemblyName Condition="'$(Private)'=='true'">JunLink.Private</AssemblyName>
+    <RootNamespace>MdrgPanel</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefineConstants>$(DefineConstants);MELON</DefineConstants>
+    <!-- dotnet build                      -> the public build (no money/stat editor)
+         dotnet build -p:Private=true     -> your private build (keeps the editor), a separate DLL name -->
+    <DefineConstants Condition="'$(Private)'=='true'">$(DefineConstants);PRIVATE_BUILD</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Your game folder (the one with MelonLoader\ and Mods\ inside) goes in Local.props at the repo root:
+       copy Local.props.example to Local.props and edit it. Or pass it each time: dotnet build -p:GameDir="C:\path\to\game" -->
+  <Import Project="$(MSBuildThisFileDirectory)..\..\Local.props" Condition="Exists('$(MSBuildThisFileDirectory)..\..\Local.props')" />
+  <Target Name="JunLinkCheckGameDir" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(GameDir)' == '' Or !Exists('$(GameDir)\MelonLoader\net6\MelonLoader.dll')"
+           Text="Jun Link: set your game folder. Copy Local.props.example to Local.props and put the game folder in it (the one with MelonLoader\ and Mods\ inside, started once with MelonLoader 0.7.3), or pass -p:GameDir=&quot;C:\path\to\game&quot;. Current GameDir: '$(GameDir)'" />
+  </Target>
+  <ItemGroup>
+    <Compile Include="..\MdrgPanel.cs" />
+    <Compile Include="..\Host.cs" />
+    <Compile Include="..\Diary.cs" />
+    <Compile Include="..\Settings.cs" />
+    <Compile Include="..\StoryPacks.cs" />
+    <Compile Include="..\Llm.cs" />
+    <Compile Include="MelonHost.cs" />
+
+    <Reference Include="$(GameDir)\MelonLoader\net6\MelonLoader.dll" />
+    <Reference Include="$(GameDir)\MelonLoader\net6\0Harmony.dll" />
+    <Reference Include="$(GameDir)\MelonLoader\net6\Il2CppInterop.Runtime.dll" />
+    <Reference Include="$(GameDir)\MelonLoader\net6\Il2CppInterop.Common.dll" />
+    <Reference Include="$(GameDir)\MelonLoader\Il2CppAssemblies\*.dll" />
+
+    <EmbeddedResource Include="..\panel.html" LogicalName="panel.html" />
+    <EmbeddedResource Include="..\stories.html" LogicalName="stories.html" />
+    <EmbeddedResource Include="..\stage.html" LogicalName="stage.html" />
+    <EmbeddedResource Include="..\pet.html" LogicalName="pet.html" />
+    <EmbeddedResource Include="..\diary.html" LogicalName="diary.html" />
+    <EmbeddedResource Include="..\settings.html" LogicalName="settings.html" />
+    <EmbeddedResource Include="..\packs.html" LogicalName="packs.html" />
+    <EmbeddedResource Include="..\common.js" LogicalName="common.js" />
+    <EmbeddedResource Include="..\logo.svg" LogicalName="logo.svg" />
+    <EmbeddedResource Include="..\panel_logo.png" LogicalName="panel_logo.png" />
+    <EmbeddedResource Include="..\gameui.css" LogicalName="gameui.css" />
+    <EmbeddedResource Include="..\fonts.css" LogicalName="fonts.css" />
+    <EmbeddedResource Include="..\montserrat-500.woff2" LogicalName="montserrat-500.woff2" />
+    <EmbeddedResource Include="..\montserrat-600.woff2" LogicalName="montserrat-600.woff2" />
+    <EmbeddedResource Include="..\montserrat-700.woff2" LogicalName="montserrat-700.woff2" />
+    <EmbeddedResource Include="..\montserrat-800.woff2" LogicalName="montserrat-800.woff2" />
+    <EmbeddedResource Include="..\gameui.js" LogicalName="gameui.js" />
+    <EmbeddedResource Include="..\jun_characters.txt" LogicalName="jun_characters.txt" />
+  </ItemGroup>
+</Project>

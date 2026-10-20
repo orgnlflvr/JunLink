@@ -1,0 +1,468 @@
+MDRG PANEL - chat with your bot (local Ollama) + a small cheat panel, in your web browser
+
+NOTE: this game's build has Unity's built-in GUI (IMGUI) stripped out, so the plugin does not draw
+anything itself. The in-game chat uses the game's own popup windows; the rest runs in a local web page.
+
+REMOVE THE OLD PLUGINS FIRST
+Delete ModMenu.dll and JunChat.dll from <game folder>\BepInEx\plugins\ (this replaces both).
+
+BUILD
+1. .NET 6 SDK (or newer) installed.
+2. Check GameDir in MdrgPanel.csproj.
+3. In this folder run:   dotnet build -c Release
+4. Copy bin\Release\net6.0\MdrgPanel.dll into <game folder>\BepInEx\plugins\
+
+USE
+1. Make sure Ollama is running. Start the game and load a save.
+2. IN GAME: press F2. The game's own input window opens ("Chat with <bot>"). Type, confirm,
+   and your bot SAYS the reply with the game's own speech display (mouth animation included).
+   Press F2 again to answer. If she is not on screen, or in a story scene, or something goes
+   wrong, the reply appears in a game popup instead. (Key and style are in the config.)
+3. BROWSER (optional): open http://127.0.0.1:8765 for the same chat plus a cheat panel for
+   money, tokens and stats. It also has an "Open chat window in the game" button.
+Settings (model name, personality, reply length, port) are in
+<game folder>\BepInEx\config\local.mdrgpanel.cfg after the first run.
+The model name must match 'ollama list' exactly.
+
+If something does not work, open the Debug section on the page and send me what it says,
+plus BepInEx\LogOutput.log.
+
+
+WHAT THE IN-GAME CHAT DOES (v1.3)
+- F2 opens the input window and zooms in on her (only on the interaction screen). F4 toggles the zoom by hand.
+  If you were ALREADY zoomed in when you pressed F2, press F4 once to fix it.
+- Her reply appears in the game's speech box next to her, with her name above it, and it does not fade.
+  It stays for BubbleSeconds after she finishes (config, default 25; 0 = until you chat again).
+- Her mouth moves while she talks (SpeakSpeed in the config).
+- The model starts each reply with tags such as [happy] [sad] [angry] [shy] [surprised] (add "very") and
+  sometimes a gesture: [wave] raises her right hand, [point], [lecture]. The plugin turns them into the game's
+  own face and arm poses (Expression/*, ArmR/*) and hides the tags. Arms go back down after 3 seconds.
+- The list of emotes the game has is on the web page under Debug and in LogOutput.log.
+
+v1.4
+- Pressing F2 to reply fades the old message out first, so it never sits behind the input window.
+- Every exchange (in game or in the browser) is saved to <game folder>\BepInEx\chat_log.txt
+  with the time, your line, her line and the mood/gesture tags.
+- Mouth speed default is now 30 letters per second. An existing config file keeps its old value:
+  edit SpeakSpeed in BepInEx\config\local.mdrgpanel.cfg (or delete the file to get the new default).
+
+v1.5
+- If a click (or the game) clears her message before its time is up, the plugin puts it back (now OFF by default; KeepAlive in the config, max 3 restores).
+
+v1.6
+- Tags like [very.sad] or [very sad] are understood too, and a reply is no longer mistaken for an error just because it starts with a bracket.
+
+v1.7
+- Stage directions between *asterisks* are no longer shown or spoken; the model is also told not to write them.
+
+v1.8
+- After you send a message, a game popup 'Jun is thinking...' with a Cancel button appears. Cancel stops the request; nothing is shown or saved. The popup closes when she answers.
+
+v1.8
+- The chat input window now has Send and Close buttons.
+
+v1.9
+- Close and Send now explicitly close the chat window; pressing F2 while it is open closes it instead of opening another.
+
+v2.0
+- Removed the Send/Close re-open hack (it broke the game's popup list: NullReference in UIManager.SyncAllPopups). The window is the game's own again; F2 or Esc closes it.
+
+v2.1
+- StoryContext option (default on): the model is told the day, time, whether she is dressed, her intelligence level and the story flags the save has reached.
+
+v2.2
+- KeepAlive on by default (max 2 restores) because her bubble vanished after clicks.
+- Jun can act on request: [feed] [rest] [heal] [comfort] change your stats (Actions option, default on).
+
+v2.3
+- Story memory: every line the game's dialogue box shows (with day/time/scene) and your chats with Jun are saved to BepInEx\jun_memory.txt and the latest lines are given to Jun, so she remembers what happened from now on. Options: RememberStory, MemoryLines.
+
+v2.4
+- Recall: when you ask about something, the best-matching lines from the whole jun_memory.txt history (up to 6000 lines, RecallLines) are added to her prompt, not only the latest ones.
+
+v2.5
+- Optional BepInEx\jun_story_import.txt: story events pulled from a save (flags with the day they first happened). Loaded before the live memory so Jun can recall old events by keyword.
+
+v2.6
+- jun_characters.txt (embedded, and editable by copying it to BepInEx\jun_characters.txt): personality notes for Jun and the game's characters, written from the game's English story text. Characters are added to the prompt when you mention them. Option: UseCharacters.
+
+v2.7
+- tools\build_story_memory.py: run it on your PC (needs Python + pip install UnityPy). It looks up the lines your save says you have seen in the game's own English text tables and writes BepInEx\jun_story_import.txt so Jun recalls real scenes. Nothing leaves your PC.
+
+v2.8
+- Hiding her bubble no longer switches the game's shared dialogue box off and clears her name tag, so the game's own menus (like Outside) no longer show 'Jun' with an empty box. Keep-alive backs off when the game shows its own choices.
+
+v2.9
+- GreetOnLoad (default on): about 5 seconds after a save has loaded and she is on screen, Jun greets you once in the game's normal dialogue box (not the bubble), with a face/gesture tag. If Ollama is not running nothing is shown.
+
+v3.0
+- The load greeting now zooms in on Jun, waits for your click to close the dialogue, then zooms back out (needs AutoZoom on).
+
+v3.1
+- Greeting no longer requires the interaction screen state and logs every step to LogOutput.log ('Greeting: ...') so a missing greeting can be diagnosed.
+
+v3.2
+- The load greeting uses the game's main story dialogue box (SayDialog.MainSayDialog) instead of her small bubble box.
+
+v4.0
+- Custom stories: write them at http://127.0.0.1:8765/stories (plain script: scenes, lines with face/gesture tags, choices). In the game press F3 (StoryHotkey) to pick one; F3 again stops it. Files live in BepInEx\jun_stories. Lines show in the game's dialogue box, choices in the game's popup, her mouth moves and the camera zooms in.
+
+v4.1
+- Story lines no longer move on by themselves: click, Space or Enter advances (after the text has finished typing).
+
+v4.2
+- F6 writes BepInEx\mdrg_assets.txt (what the game has loaded). Read-only.
+
+v4.3
+- F7 writes BepInEx\mdrg_characters.txt (the game's character names and the portrait characters that can be shown). Written line by line.
+
+v4.4
+- Stories can put the game's own portrait characters on screen: @show Annalie left|center|right and @hide Annalie|all (editor has a Characters bar). First version, untested in the game. CharacterSpread in the config sets how far left/right they stand.
+
+v4.5
+- Story name tags use the game's own colours (Annalie, Melissa, You...). Player lines show as 'You'. Custom colour: color: Name = #rrggbb
+
+v4.6
+- @show now forces the character visible and logs its position/renderers; F7 lists active characters with the same details.
+
+v4.7
+- @show measures the character's sprites and places her in view (the old placement put her at y=-76, off screen). Config: CharacterSize, CharacterSpread.
+
+v4.8
+- @show: portrait is bigger and its bottom sits at the screen edge (bust art, no visible legs). The log lists each character's slots and expression items.
+
+v4.9
+- Portrait characters: faces from tags (Annalie [sad]:), @face and @outfit commands. Clicks no longer wait: one click finishes the typing, the next moves on.
+
+v5.0
+- Face and arm tags are matched by meaning (happy = eyeClosed / smileEyeClosed, shocked = suprised, pervygrin = pervy, point/wave = arm up). Works for Annalie, her outside look and other portraits.
+
+v5.1
+- @background room|outside|shop|clothier|shower|pc|cuddle|changingroom: fades with the game's camera manager, switches view, re-places portrait characters, and returns to your previous view when the story ends. Untested in the game. Config: BackgroundFadeSeconds.
+
+v5.2
+- Portrait characters are created at top level, so they are not switched off with the apartment when @background changes scene.
+
+v5.3 (untested in game)
+- Stale-text watchdog is now gentle: it only acts if the box is idle and shows none of the line after 1.2 s (the first version cut lines off).
+- @show Melissa now finds the Cashier portrait.
+- Characters are re-placed twice after a background change; the log prints camera and character state.
+
+v5.6 (untested in game)
+- Portraits sit in front of the camera (z = camera + 20); before they were behind it. CONFIRMED working in the shop/clothier/street.
+- Sizes: all portraits share one scale factor applied to their own default scale (no more stretching a bust and a full-body portrait to the same height).
+- @hide now understands the same names as @show (Melissa = Cashier). Before, "@hide Melissa" and "@hide Annalie" silently did nothing, so they followed you outside and home.
+- The stale-text check no longer re-says lines while they are being typed (that caused the "double typing"). It only acts when the box still shows the PREVIOUS line.
+- After switching to the room the log prints "Jun check: ..." (is she active / where is she), and switches her on if she is not.
+- Stories now use the "Annalie" portrait (clothing shop) instead of "Annalie_Outside".
+
+v5.7 (untested in game)
+- New command @jun left|center|right|hide: shows Jun in the other places (clothier, shop, street). She is moved out of the room scene while the story is away from the room and put back when it returns to the room or ends. The log prints "Jun capture", "Jun placed" and "Jun put back" lines.
+- annalies_day.story: Annalie uses her clothing-shop portrait at the monitor (right) in her shop, and her hangout portrait (Annalie_Outside) in the middle at the supermarket and on the street. Jun is on the left. The editor has a "+ Jun position" picker.
+
+v5.8 (untested in game)
+- Portraits are no longer pulled to the front: the clothier monitor and the shop till are drawn over them on purpose, so Annalie stands behind the monitor and Annalie/Melissa behind the till. (The sorting bump from v5.4-v5.7 was never needed; the z fix was the real cure.)
+- Jun in other places: placed by her visible bounds (position and size copied from the room) instead of her transform, and never switched off between places (that probably made her vanish after the first change). She is parked far away during a transition instead.
+- The log has "Story: Jun capture / placed / watch / in room" lines with her bounds, so we can see where she really is.
+
+v5.9 (untested in game)
+- Jun in other places, rebuilt. The v5.8 log showed why she never appeared: the game builds and destroys her model for whichever scene is using it, so the model I had grabbed in the room was already gone in the next scene (my reference turned into "null" and the placing code silently stopped). Now the plugin asks the game itself to move her into the scene that is on screen (the same call the game uses: ViewScene.MovePrefabInto), looks her up fresh every few tenths of a second, and then fixes her size and place by her visible bounds. Back in the room the game puts her there itself.
+- @jun and @show accept numbers as well as left / center / right: -1 is left, 0 is the middle, 1 is right, -0.5 is halfway to the left. Jun's "left" is now truly left (before it was measured from where she stands in the room, which is right of centre).
+- annalies_day.story: in the supermarket Jun is at -1.4, Annalie (hangout outfit) at -0.45 so she stands beside the till instead of overlapping it, Melissa at the right. Edit these numbers in the story editor if you want them elsewhere.
+- The log has "Story: Jun capture / asked to move / placed / put back / 2 s later / in room" lines. They include how many of her renderers are on and actually drawn, and their sorting layers, so if she is placed but still invisible the cause shows up there.
+
+v5.10 (untested in game)
+- Confirmed from the v5.9 log: Jun now appears in the outside, clothier and shop scenes and is put back in the room by the game afterwards. She is not drawn for her first second or two in each scene (the log says "drawn=0" at "placed" and "drawn=98" at "2 s later"), that is the model being built.
+- New command @move Id position (for example  @move Annalie_Outside 0.3): slides a character who is already on screen to a new spot, so people can change places between scenes without being shown again. The editor has a Move button next to "Show on screen".
+- annalies_day.story: spacing retuned. Jun -0.5 when she is alone with the scenery (street, clothier), -1.75 in the supermarket (she and Annalie share the free floor left of the counter; Annalie is at -0.8 so she is no longer on the counter), and on the street at the end Annalie is moved to 0.3 and Jun is at -0.75 so they no longer overlap.
+
+v5.11 (untested in game)
+- Portraits now use the game's own size and spot, taken from your F7 lists: each keeps its DefaultScale (Annalie 1.0, Melissa 0.6) and its pivot sits 0.51 below the camera centre. Annalie at the monitor is at x 0 (centre), Melissa at the till is at 1.25 (the game puts her 5 units right of the camera centre). The old "shared scale, feet at the bottom" logic is gone.
+- annalies_day.story: Annalie centre in her shop, Melissa 1.25, Annalie_Outside -0.2 in the supermarket, Jun further left (-1.15 / -1.6 / -1.2) because the portraits are now big. Tune the numbers if needed.
+
+v5.12 (untested in game)
+- Annalie's hangout portrait (Annalie_Outside) is drawn bigger than her shop portrait, so she is now scaled by the new config value HangoutAnnalieScale (default 0.72) in the .cfg file. Lower it for smaller.
+- annalies_day.story: Jun moved closer (-0.95 shop, -1.05 supermarket, -0.8 street), Annalie_Outside at 0.1 / 0.5.
+- New story command: @size Name 0.8 (1 = the size the game draws, allowed 0.1 to 3), and an optional last number on @show:  @show Annalie_Outside 0.1 0.72
+  A size set in the story wins over the HangoutAnnalieScale config value.
+
+v5.13 (untested in game)
+- Jun's size: @jun -1.1 1.4  (second number = size, 1 = her size in the room, stays until changed; 0.1 to 3).
+- Height: @show Name position size height and @move Name position height. Negative = lower (-0.7 is about 70 px at 1080p), range -3 to 3.
+- annalies_day.story: Jun is 1.4 everywhere, and Annalie_Outside in the supermarket is 0.7 lower.
+
+v5.14 (untested in game): STAGE page
+- Open http://127.0.0.1:8765/stage in your browser while Jun is on screen in the game. Press "Open stage in game": the story dialogue is skipped and the game just shows the background and characters.
+- Pick a background, add characters, drag them on the page (wheel = size). The game follows live. "Copy lines" gives @background/@jun/@show lines to paste into a story, and "Send to story editor" + the editor's new "Insert stage" button drops them in at the cursor.
+- "Close stage" puts the game back where it was.
+- @jun now takes a third number, a height: @jun -1.1 1.4 -0.3.
+
+v5.14b (untested in game)
+- Stage mode hides every text box (the greeting or any leftover line used to stay up, with the wrong name on it). The stage page has a "show a sample text box" tick if you want to see how much of the scene the real box covers.
+
+v5.14c (untested in game)
+- @jun no longer carries the size and height over from an earlier @jun line. A number you leave out goes back to normal (size 1, height 0). Before, "@jun -1.1 1.7" kept the height of the previous @jun, so Jun sat lower in the next scene.
+
+v5.14d
+- "Amei" now works as another name for Melissa (the Cashier portrait): @show Amei, and "Amei [sad]: ..." lines change her face.
+- New example story: stories/saving_amei.story (three endings).
+
+v5.14e (untested in game)
+- New backgrounds: hospital (camera -50,-40) and flashback (black, camera -50,0). The plugin finds those views by position; if one is not found the log lists every view it saw.
+- "Real Melissa" is an alias for the UnknownWoman portrait (original clinic placement: Melissa +0.75, UnknownWoman -0.75).
+- Original flashback placement: Melissa at 1.5, game's own size.
+
+v5.14f (untested in game)
+- Amei [sad] / @face Melissa sad now picks the Cashier face "depressed" (before it fell to "hmmm", closed eyes).
+- @outfit now searches whole-outfit combos first, so "@outfit Melissa Daily2" changes hat and arms too. Cashier outfits: Uniform, Daily, Daily2.
+
+v5.14g (untested in game)
+- F7 (character list) now ends with "big pictures on screen right now": every large sprite or full-screen UI image that is drawn at that moment, with its name. Press F7 while the game's hospital scene is on screen to find what its background is called; the file is BepInEx\mdrg_characters.txt.
+- The "hospital" background only moves the camera. The game's hospital photo is not a camera view, so it may be black until its image name is known.
+
+v5.14h (untested in game)
+- @background hospital now also switches on the game's clinic photo (sprite "hos", found at Views/Scene 2/Image 2 by the F7 list) and switches it off again when the story moves on or ends. If the log says "no sprite called 'hos' is loaded", the game has not loaded it yet.
+
+v5.14i (untested in game)
+- The clinic picture ("hos") is not in memory until the game's own clinic scene has run, so @background hospital showed black. Fix in two steps:
+  1) Play to the game's own clinic scene (with the green hospital photo showing) and press F7. F7 now saves every big picture on screen to BepInEx\jun_backgrounds\<name>.png (plus <name>.color, the tint the game puts on it). You only need to do this once.
+  2) After that, @background hospital loads jun_backgrounds\hos.png by itself.
+- If you already have a PNG of the clinic you can drop it there yourself as hos.png (16:9 works best).
+
+v5.14j (untested in game)
+- Story choices now use the game's own choice buttons (Fungus MenuDialog), shown under the normal text box with the last line still visible. Before they used the game's centred popup, which showed the story title as a header, covered the character and dimmed the scene. If the game's buttons fail the old popup is used. Set NativeChoices = false in the cfg to go back to the popup.
+
+v5.14k (untested in game)
+- New story commands: @slide Name pos [seconds] glides a portrait to a new spot (eased, default 3 s) while the story keeps going; @stop Name (or @stop all) freezes it where it is. @move and @background cancel a slide. Used in amei_next_command.story: Amei slides towards the window and stops when you shout WAIT.
+- The game's own choice buttons stay the default (NativeChoices = true).
+
+v5.14l (untested in game, the pages themselves were checked in a browser)
+- Optional "Game UI" look for the three web pages (panel, story editor, stage): square cut corners, the game's purple / crimson / yellow colours, buttons with the little white corner mark, and the Montserrat font (loaded from Google Fonts, so it needs internet; it falls back to a normal font offline). Use the "Game UI: on/off" button in the bottom right corner of any page. The choice is remembered in the browser and is off by default.
+- New files: gameui.css and gameui.js (both are embedded in the plugin; csproj updated).
+
+v5.14m (untested in game)
+- Stories can play the game's own music. @music Rainy Day plays one track (name matched loosely against the game's names, e.g. Fishing_Rainy_Day), @music Cuddle plays a whole category (the game shuffles it), @music stop gives the game's music back, @music auto = the default for the current background.
+- Without any @music, each @background picks a fitting track: outside = street music, shop = Cashier theme, clothier = Annalie theme, hospital = Wish_Things_Were_Easier, flashback = Cuddle_If_Only, cuddle = Cuddle, pc = PC music. room/shower/changingroom keep the game's own music. Music is put back when the story ends.
+- The tracks go through the game's own music system (forced above its normal picks), so your music volume / mute settings still apply. The full track list is written to the BepInEx log the first time a story plays music, and any name that does not match is logged as a warning.
+- cfg: Panel/StoryMusic (default true). Set false and stories never touch the music.
+- Stories updated with music: amei_next_command (sad tracks, Jun scene = Cuddle), telling_big_daddy (his theme), telling_annalie (her theme), juns_first_rainy_day (Rainy Day, then Just You and Me).
+
+v5.14n (untested in game)
+- Fix for @music: the log showed the tracks were found but handing them to the game failed ("cannot be converted to IEnumerable"). The list is now converted to the game's own list type first. If it still fails the log says why.
+
+v5.14o (untested in game)
+- Story editor: new music row. Pick a track (grouped by category, with an "all <category> (shuffle)" entry at the top of each group), press Preview to hear it in the game, Insert @music to put the line in the story, Stop to stop the preview, or Insert @music stop. The list comes from the game, so it fills in a few seconds after the game has loaded (the dropdown says "not loaded yet" until then).
+- Editor background list now includes hospital and flashback.
+- stories/MUSIC_LIST.txt: all the tracks from your game as ready-to-paste @music lines.
+- New routes: /api/music (track names) and /api/music/play.
+
+v5.14p (untested in game; the page itself was checked in a browser with a fake picture)
+- NEW: pet view, step 1. Open http://127.0.0.1:8765/pet while the game is running with a save loaded. A spare camera draws Jun alone on a transparent background (she is moved to an unused layer for the instant of the render and put straight back, so the game's own picture does not change) and the page shows her on a checkerboard. Pick other backgrounds to check the edges. The game only draws her while the page is open (it stops 4 seconds after the tab closes).
+- "fix dark edges" (on by default) undoes premultiplied alpha. If her edges look dark, keep it on; if they look wrong/bright, switch it off. Tell me which one looks right.
+- cfg [Pet]: Enabled, Fps (default 12), Height (default 800). Lower both if it is heavy.
+- If the page says "render failed: ..." the details are in BepInEx\LogOutput.log (look for "Pet:").
+- New files: pet.html (embedded). csproj updated.
+- (v5.14p fix) build error: Camera.nearClip/farClip renamed to nearClipPlane/farClipPlane.
+- (v5.14q fix) /pet, /pet/frame.png, /api/pet/info and /api/music were registered in the POST-only part of the web server, so opening them in a browser said "not found" (and the editor's music list stayed empty). They are now GET routes.
+
+v5.14r (untested in game; the page was checked in a browser against a fake server)
+- Pet page (/pet): click her head or body and she reacts (emote / wave / blush) and answers with a short line; a chat box at the bottom talks to her through the normal chat model and memory, and the answer appears in a speech bubble (her emote tags from the reply are applied to her too). Click the bubble to close it. "she answers clicks" turns the canned lines off (the reactions stay).
+- The page only downloads a picture when there is a new one, so the counter now shows new pictures per second (your Pet/Fps setting).
+- New route: POST /api/pet/react.
+
+v5.14s (untested in game)
+- While the pet page (or the desktop pet) is open the game keeps running when it is minimized / not in focus (Application.runInBackground), and is limited to Pet/BackgroundGameFps (default 30, 0 = off) frames per second while you are using another window. Both are put back when the pet closes.
+- NEW program: MdrgPet (folder MdrgPet next to MdrgPanel): the see-through desktop pet. See MdrgPet\README.txt.
+- (v5.14t) Pet/MuteWhenInBackground (default true): while the pet is open and the game is minimized / not in focus, the game's sound is muted (AudioListener.volume = 0) and restored when you come back to the game or close the pet.
+
+v5.14u (untested in game)
+- No more internet for fonts: Montserrat (SIL Open Font License, montserrat-OFL.txt) is packed in the mod and served at /fonts/... The Game UI theme and the pet page use it. New files: fonts.css, montserrat-500/600/700/800.woff2 (embedded; csproj updated).
+- F7 also lists the fonts the game has loaded ("== fonts loaded in the game =="), so we can check which one its own UI uses.
+
+v5.14v (untested in game)
+- FIX: the greeting repeated over and over ("Still answering the last message." spoken again and again). The game hands out a new wrapper object every time the mod reads the save, so "already greeted this save" never matched; it now compares the native pointer.
+- "[busy]" / "[error]" / "[no reply]" messages are no longer spoken as Jun's lines in the game (the check ran after the tag parser had already stripped "[busy]").
+- The pet page and MdrgPet show "(she is still thinking, try again in a moment)" instead of the busy text.
+
+v5.14w (untested in game)
+- Internal tidy-up only, nothing changes in how the mod behaves: everything that talks to the mod loader (start-up, config, logging, the mod's folder) now lives in one small file, BepInExHost.cs, with the loader-neutral part in Host.cs. MdrgPanel.cs no longer mentions BepInEx's types. This makes a MelonLoader version possible later (it would be one more small file). Build as before: dotnet build -c Release. There are now 3 .cs files in the folder; keep all of them.
+
+v5.14x (untested in game)
+- NEW: experimental MelonLoader build in the Melon\ folder (see Melon\README_MELON.txt). Written against the assembly names from a MelonLoader 0.7.3 install of the game (global game types are in the Il2Cpp namespace, Fungus is Il2CppFungus). The BepInEx build is built exactly as before (dotnet build -c Release in this folder) and is not affected: the MelonLoader code is behind a MELON compile switch and the Melon folder is excluded from the BepInEx project.
+
+v5.14y (untested in game)
+- FIX (stutter): the keep-alive could think a reply had been wiped when it had only not started typing yet, and then said it again from the start, so the text typed out two or three times. It now only puts a message back if it was seen on screen first. If it still stutters, set Panel/KeepAlive = false in the config file (UserData\MdrgPanel.cfg on MelonLoader, BepInEx\config\local.mdrgpanel.cfg on BepInEx) and tell me.
+
+v5.14z (untested in game)
+- FIX (stutter, 2nd try): after the keep-alive put a message back, it checked again one second later, saw no text yet (the typing had only just started) and put it back a second time, so the message typed out again and again. After a restore it now has to see the text on screen again before it may restore once more. Workaround while testing: Panel/KeepAlive = false in UserData\MdrgPanel.cfg (MelonLoader) or BepInEx\config\local.mdrgpanel.cfg (BepInEx).
+
+v5.14za (untested in game)
+- The keep-alive log lines now say how long after the message was shown the text appeared and when it vanished, so the repeat can be pinned down from a log. No behaviour change. If the text types out twice, set Panel/KeepAlive = false in the config file.
+
+v5.14zb (untested in game)
+- Diagnostic only: for 12 s after she speaks, the log gets "Trace(...)" lines: when the box switches on/off, when the visible text appears, when it gets shorter (typing restarted), and (with their own "Zoom: in/out" lines) when the zoom happens. Used to find why the greeting types out twice.
+
+v5.14zc (untested in game)
+- Your own background pictures: put a PNG (16:9 works best, 1920x1080) in jun_backgrounds as <name>.png, then  @background <name>  in a story (name = lowercase letters and digits). The picture covers the screen over the game's outside view, the street art is switched off while it shows, and Jun can still stand in it (@jun works). Everything is put back when the story moves to another background or ends. The log prints "Story: custom background ..." lines.
+- Included: jun_backgrounds\bowling.png (a simple drawn bowling alley, replace it with your own picture any time) and stories\bowling_night.story ("Strike Night": Melissa in her hangout outfit Daily; try Daily2).
+- Folder: UserData\MdrgPanel\jun_backgrounds\ on MelonLoader, BepInEx\jun_backgrounds\ on BepInEx.
+- tools\export_backgrounds.py (run on your PC, needs pip install UnityPy): saves the game's own pictures bowling, karaoke, plaza, theatre, restaurant and cafe_night from <GameName>_Data\resources.assets (+ resources.assets.resS next to it) into jun_backgrounds. The saved bowling.png replaces the drawn stand-in, so @background bowling shows the game's real picture. Keep these pictures private; do not put them in a public release. Run it with --list to see every picture name. Untested in the game.
+
+v5.14zd (untested in game)
+- The load greeting is skipped if a story is already playing when it would fire. The log showed it asking the model, and speaking, in the middle of 'Strike Night'. The log line is "Greeting: skipped: a story is playing".
+
+v5.14ze (untested in game)
+- tools\export_backgrounds.py now saves 55 of the game's place pictures by default (bowling, karaoke, cafe, restaurants, plaza, city, theatre, aquarium, amusement park, planetarium, star gazing, beach, temple, casino, tunnels, factory, riots, dystopia...). Phone ads, PC screens, sky layers and scene art are left out. It also writes jun_backgrounds\BACKGROUNDS.txt with every name as a ready @background line. Keep the pictures private.
+- The story editor's '+ background' list and the stage page now show every picture in jun_backgrounds next to the built-in places (new route /api/backgrounds). The folder is read each time the page asks, so after adding pictures just reload the page.
+
+v5.15 (untested in game; the diary page was checked in a browser with test data, and the diary code was run outside the game against a fake Ollama)
+- NEW: Jun's diary. When the in-game day moves on by one, Jun writes a short private entry about the day that ended, from that day's lines in jun_memory.txt (story text you saw and your chats). Read it at http://127.0.0.1:8765/diary (also linked from the panel). "Write today's entry now" asks her to write about the current day; "write again" on an entry rewrites that day.
+- Loading another save does not count as a new day. Only one entry per day; writing a day again replaces it.
+- Entries are saved in jun_diary.jsonl (UserData\MdrgPanel\ on MelonLoader, BepInEx\ on BepInEx).
+- cfg section [Diary]: Enabled (true), Words (120), NotesPerDay (80), Prompt (the instructions, editable). Needs Memory/RememberStory = true.
+- The diary uses its own request to Ollama, so it does not block or show up in the chat.
+- New files: Diary.cs and diary.html (both csproj files updated).
+
+v5.16 (untested in game; the settings page was checked in a browser with test data, and the save logic was run outside the game)
+- NEW: settings page. Press F8 in the game (SettingsHotkey) and it opens http://127.0.0.1:8765/settings in your browser, or open it from the panel. Every option of the mod is listed by section (Ollama, Chat, Memory, Diary, Panel, Pet) with its description and a search box. Changes are applied in the game right away and saved to the config file; "default" puts an option back.
+- Hotkeys change live. Port needs a game restart (the page says so). Wrong values are refused with a reason (e.g. a key name Unity does not know).
+- F8 does nothing while the chat input is open. If the game is fullscreen, the browser opens behind it: alt-tab to it.
+- New file: Settings.cs and settings.html (both csproj files updated). Host.cs records every setting as it is bound; MelonHost.cs saves MelonPreferences after a change.
+
+v5.17 (untested in game; the packs page was checked in a browser with test data, and the pack code was run outside the game)
+- NEW: story packs. A pack is one .storypack file (a zip) holding several .story files, a pack.json (name, author, version, description) and an optional cover.png. Put it in jun_stories and its stories show up in F3 and in the story editor, after your own, marked with the pack name.
+- http://127.0.0.1:8765/packs (linked from the panel and the editor) lists installed packs with cover and description, a "Play in game" button per story, and a warning for any @background the player does not have yet (with the hint to run tools\export_backgrounds.py).
+- "Make a pack" on the same page: pick your own stories, name, author, description and an optional PNG cover; it writes jun_stories\made_packs\<name>.storypack. Only the stories and your cover go in, never game pictures.
+- Pack stories cannot be deleted from the editor. Saving one makes your own copy under its plain name; the pack is never changed.
+- Story ids may now be up to 120 characters (was 60) so pack ids fit.
+- New files: StoryPacks.cs and packs.html (both csproj files updated).
+
+v5.17a (untested in game)
+- "Shanice" now works in stories: @show Shanice shows her Nun_NewOutfit portrait (the F7 list showed the game has no portrait called Shanice; hers are Nun and Nun_NewOutfit). @show ShaniceOld (or @show Nun) gives her other look. "Shanice [happy]: ..." lines change the face of whichever of the two is on screen.
+- New example story: stories/shanice_meets_melissa.story ("The Discount Incident").
+
+v5.17b (untested in game)
+- Face tags now also find faces whose names end with the word: Shanice's faces are nunFaceHappy, nunFaceNormal, nunFaceSerious, nunFaceThinking, nunFaceAngry, so [happy], [normal], [serious], [thinking], [angry] work for her. Exact names still win, so Annalie and Melissa are unchanged.
+- Single eye or mouth items work as tags too: [pout] (mouth) and [really] (eyes) for Shanice. Write them after a face, e.g. Shanice [normal][pout]: ..., and they are put on top of it.
+- Arm tags also take a portrait's own arm names: Shanice [palm], [pointself], [gunfingerup], [down]. [point] picks PointSelf for her.
+- A load greeting that was asked for just before a story started is no longer shown in the middle of the story (the log showed it arriving 6 s into "The Discount Incident"). Log: "Greeting: dropped, a story started while she was thinking of it".
+- shanice_meets_melissa.story: every Shanice line now uses her real faces and arm poses.
+
+v5.18 (untested in game; the new request code was run outside the game against fake servers of both kinds)
+- The mod now talks the OpenAI-style chat API by default, which KoboldCpp, llama.cpp's llama-server, LM Studio and Ollama all offer. One code path for all of them, used by the chat, the load greeting and the diary.
+- New setting Api in the AI server section (the cfg section is still called [Ollama] so old config files keep their values): openai (default) or ollama (Ollama's own API, only needed for its Think switch).
+- New defaults for fresh installs: Url http://127.0.0.1:5001 (KoboldCpp) and an empty Model (KoboldCpp and llama-server use the model they loaded). Existing config files keep their Url and Model.
+- Url can be the server address (http://127.0.0.1:5001), the /v1 address, or the full .../v1/chat/completions address.
+- If you use Ollama: keep Url http://127.0.0.1:11434 and your Model name; it works with Api = openai too. Set Api = ollama only if you need Think = false for a reasoning model.
+- Error messages name the address they tried and point to the settings page.
+- New file: Llm.cs (Melon csproj updated; the BepInEx csproj picks it up by itself).
+
+v5.19 (untested in game)
+- Custom story lines now show up in the game's own dialogue log (the log button next to the text box), with the speaker's name and colour from the game (Jun, You, Annalie, Melissa, Shanice...). Narration lines have no name, like the game's own.
+- How: the game only logs a line when its dialogue box reports "finished", which story lines never did. Each story line is now written to the log when the next line starts or the story ends. If the game did log it already, only the missing speaker is filled in, so lines are not doubled.
+- Stage mode is not logged.
+- cfg: Panel/StoryInLog (default true). If it ever fails, the log says "Story: could not add the line to the game's log" once.
+
+v5.19a (untested in game)
+- Faces also work for portraits whose faces are plain items in a "Face" slot instead of combos: Big Daddy (bdhNormal, bdhSmile, bdhSerious). [normal], [happy] (= smile) work; [sad] and [surprised] fall back to his serious face. The log showed "no face" on every Big Daddy line.
+- [sad] and [surprised] now fall back to a "serious" face on any portrait that has no sad or surprised face (Shanice too).
+
+v5.19b (untested in game)
+- Fix: a story that starts on your own background picture (karaoke, temple...) could hide every character, Jun too. The log showed the picture put on the "Light" sorting layer, which is drawn above characters: the mod copied the layer of the biggest picture in the street scene, and the game's lighting overlay is as big as the street photo. It now copies the lowest sorting layer and never a lighting layer.
+
+v5.19c (untested in game)
+- Fix: starting a story while the load greeting was still being typed left the text box stuck: the speaker name changed with every line but the text stayed frozen on the greeting ("Welcome back, Honey. My internal cl"). Switching scenes turns the box off for a moment, which cut off the game's typing in the middle, and the box then waited for ever for it to finish.
+- A story now stops the greeting cleanly when it starts, and before each story line a typewriter that is still "busy" after 0.6 s is reset. The log says "Story: the text box was stuck typing an earlier line ...; reset it" when that happens.
+
+v5.20 (untested in game, first step)
+- NEW story command: @minigame skillcheck [difficulty] [scene>=min ... fallback]
+  Starts the game's own timing-bar minigame (ClickMinigameSkillCheck), or "work" for the work clicking game, the same way the game starts its minigames, and waits for its score (0 to 1).
+  Then the story jumps to the first scene whose minimum the score reaches, else to the last plain scene. Example: @minigame skillcheck 0.5 strike>=0.85 spare>=0.5 gutter
+  In story text: {score} (percent), {pins} (score x 10) and {total} (pins added up over the story).
+- If the minigame is not in memory, the throw is a random roll and the log says "not loaded right now". The log line "Story: minigame skillcheck started from ..." shows where it came from.
+- The editor checks the command and the target scenes.
+- Test story: stories/bowling_test_throw.story (one throw).
+
+v5.20a (untested in game; the log confirmed v5.20's @minigame starts the game's own timing bar and returns its score)
+- NEW: @score reset (sets {total} back to 0, for a new match) and @total win>=20 tie>=19 lose (jump by {total}, the pins added up since the start or the last reset).
+- New story: stories/bowling_battle.story ("Strike Night: The Gauntlet"): three-frame matches against Annalie, Shanice, Melissa and Jun, every throw is the game's timing bar, rematches, sudden death on a tie, and an ending for every way it can go.
+
+v5.20b (untested in game)
+- @minigame difficulty may now be 0 to 20 (was 0 to 1). The Gauntlet log showed 11 perfect throws out of 12 at every difficulty from 0.3 to 0.75, so the game probably expects a different scale. stories/difficulty_test.story throws at 0.5, 2, 5 and 10 to find out.
+
+v5.20c (untested in game)
+- @minigame with a difficulty: the difficulty test showed it works (0.5 and 2 easy, 5 and 10 hard), but the bar looked buggy. Cause (most likely): the game's own start already began a round, and setting the difficulty began a second one at the same time. With a difficulty, the minigame is now copied by hand, given the callback and started once at that difficulty. Without a difficulty it starts the game's normal way.
+- Gauntlet retuned to the scale the test showed: Annalie 1, Shanice 2.5, Melissa 4, Jun 6 (sudden death a bit harder).
+
+v5.20d (untested in game)
+- v5.20c's hand-made start crashed inside the game's Restart (NullReferenceException, the log showed it on every throw) and fell back to no difficulty. Now: the game's normal start does its setup, then the round it began is stopped in the same frame and started again once at the chosen difficulty.
+
+v5.20e (untested in game)
+- v5.20d froze on "Ready?": Restart(difficulty) only resets the bar and sets the difficulty; the round itself is the minigame's Game() routine, which the stop had ended. Now the round is stopped, the difficulty set, and Game() started again once.
+- If a minigame ever hangs, the story goes on by itself after 90 s with a score of 0.
+
+v5.20f (untested in game)
+- The story editor said "Stories are plain files in BepInEx\jun_stories" on MelonLoader too. Pages and the RememberStory description now name the right folder: UserData\MdrgPanel on MelonLoader, BepInEx on BepInEx (and the right log: MelonLoader\Latest.log or BepInEx\LogOutput.log).
+
+v5.21 (untested in game)
+- Loading UI on every page: a thin bar at the top while the game is answering, a "loading..." chip if it takes longer than a moment, and a short logo screen when a page opens. Background polling (state, music list, etc.) does not trigger it.
+- Warnings before things you can't undo: saving over an existing story, deleting a story, rewriting a diary entry, leaving the story editor with unsaved changes, and (once per session) playing a story in the game. Messages pop up as small notes in the bottom-right corner instead of browser alerts.
+- Pack stories can't be deleted from the editor (delete the .storypack file instead); the editor says so.
+- Fixed: the music Preview/Stop buttons in the story editor were missing the safety header and got refused.
+- Logo: an original "MDRG Panel" mark (pages, tab icon, dialogs). To use your own, put a logo.png in the mod's folder (UserData\MdrgPanel on MelonLoader) and reload the page.
+
+v5.21a (untested in game)
+- Loading is now a real progress bar with a percent: on the logo screen when a page opens, in a small "Loading ..%" chip at the top for slower actions, and as the bar along the top edge. It fills as the game answers each request and hits 100% when everything has arrived.
+- Logo: pages show logo.png from the mod's folder (UserData\MdrgPanel on MelonLoader) on the loading screen, page titles and dialogs; wide logos are fine. Without one, the built-in MDRG Panel mark is used. The browser tab icon is always the small square mark (a wide logo gets squashed there).
+- The game's logo is NOT built into the mod on purpose, so releases don't ship the game's art. Put it in logo.png on your own machine.
+
+v5.21b (untested in game)
+- A roughly square logo.png is now also used as the browser tab icon (wide ones still fall back to the built-in mark).
+- Small pixel-art logos (160 px or less) are scaled up sharp instead of blurry, and shown bigger on the loading screen.
+
+v5.21c (untested in game)
+- Original Flavour's pixel logo is now built into the mod (panel_logo.png): loading screen, page titles, dialogs and the browser tab icon. No extra file needed.
+- A logo.png in the mod's folder still replaces it if you want a different one (as the tab icon only when it is roughly square).
+
+v5.21d (untested in game)
+- Loading bar restyled to match the game's UI: crimson striped bar in a square purple frame with cut corners, "LOADING ASSETS" title and percent.
+- It names what it is loading: the loading screen shows the current asset ("story list · 4/5") and a short list of finished ones (fonts, logo, music list, background list...), with a red cross for anything that failed. The small bar at the top for later actions shows the same ("saving story · 0/2").
+- The loading screen now also waits for the fonts, the logo and the background data, so the page appears all at once (gives up after 6 s).
+- AI chat replies and pet frames never show the loading bar (they have their own indicators).
+
+v5.22 (first public release; built for MelonLoader 0.7.3 / .NET 6, untested in game)
+- Jun has to be awake before the AI side works: chat (F2 and the panel), the greeting, the diary and stories (F3 and Play) stay off until
+  the save is past the prologue, Jun is at story stage 1 or higher, the game counts her as smart enough to talk (its own IsBotSmart check),
+  and she has both arms and both legs. Until then F2/F3 show the game's popup with a checklist, the panel shows what is missing,
+  and the story editor's Play says why. All values come from the save; limits are in [Requirements] (Prologue, Stage, CanTalk, AllBodyParts).
+  If the game renames one of these values, that check is skipped and noted in Debug instead of locking the mod.
+- Public builds (dotnet build -p:Public=true) leave out the money/token/stat editor; the panel hides it. Your own builds keep it.
+- New story: saving_melissa.story ("Not Today, Melissa"), three timing-bar holds decide how close it gets.
+- jun_characters.txt: removed a save-specific spoiler from Melissa's note.
+- Release zips no longer carry jun_story_import.txt (it is your own save history; build_story_memory.py makes it on your PC).
+
+Jun Link 1.0.0 (the mod's new name; was MDRG Panel v5.22) (untested in game)
+- New name: Jun Link. DLL JunLink.dll, settings UserData\JunLink.cfg, files in UserData\JunLink. On the first start the old
+  UserData\MdrgPanel folder and MdrgPanel.cfg are copied over (the old ones stay as a backup). Page titles say Jun Link.
+- Public and private builds are now separate:
+    public  (default)            JunLink.dll           no money/stat editor - the one to share
+    private (-p:Private=true)    JunLink.Private.dll   keeps the editor, shows as "Jun Link (private)" in MelonLoader - never share
+  Melon\build_public.bat and Melon\build_private.bat build each one into out\public / out\private.
+- Only one copy runs: if the old MdrgPanelML.dll is in Mods, Jun Link switches itself off and says why in the log;
+  if both JunLink.dll and JunLink.Private.dll are there, the public one switches off.
+
+Jun Link 1.0.0 - requirement fix (untested in game)
+- The lock now matches the game's own "Advanced AI": the scene where Jun says "Advanced AI setup, which you started some time ago,
+  has just finished" is Stage3Linear1 in the game's text tables, the first scene of story stage 3. Before it she runs the emergency AI.
+  [Requirements] is now: Prologue, AdvancedAI (story stage 3), AllBodyParts. The guessed "Stage = 1" and the separate CanTalk check are gone.
+
+Jun Link 1.0.0 - fixes from the first public test (untested in game)
+- F3 story menu: the game's popup puts its buttons in one row, so with 16 stories they ran off the right edge and only the first 8 were
+  listed at all. It now shows 3 stories at a time with a "More >" button (page X of Y, wraps around).
+- Stories that use the game's places (cafenight, bowling, karaoke, beach, ...) no longer refuse to start when the player hasn't run
+  tools\export_backgrounds.py yet: the street is used instead, with a note in the log and on the panel. Typos are still caught by Check.
+- The log's music list no longer shows an internal field name (the editor's list never did).
+
+Jun Link 1.0.0 - panel chat (untested in game)
+- The panel chat no longer shows the hidden greeting instruction ("(Game event) The game was just loaded...") as if you had typed it.
+  Her greeting reply is still shown.

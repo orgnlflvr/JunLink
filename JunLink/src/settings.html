@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jun Link settings</title>
+<link rel="stylesheet" href="/fonts.css">
+<style>
+:root{--bg:#1b1226;--card:#241733;--fg:#f1eaff;--mut:#a99bc4;--acc:#d6336c;--line:#3a2a52;--ok:#5fd38d;--bad:#ff6b8a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 Montserrat,Segoe UI,system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:2}
+h1{font-size:18px;margin:0 8px 0 0}
+a{color:var(--acc)}
+.mut{color:var(--mut);font-size:13px}
+input,textarea,button{font:inherit;color:inherit;background:#2a2140;border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+input[type=search]{min-width:200px;flex:1;max-width:320px}
+textarea{width:100%;min-height:96px;resize:vertical;font-size:13px}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc);padding:0}
+button{cursor:pointer;font-size:12px;padding:4px 9px}
+main{max-width:860px;margin:0 auto;padding:16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:0 0 14px;padding:6px 16px}
+section h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin:10px 0 4px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:6px 16px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row.wide{grid-template-columns:1fr}
+.name{font-weight:600}
+.desc{color:var(--mut);font-size:12.5px}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctl input[type=text],.ctl input[type=number]{flex:1;min-width:0}
+.st{font-size:12px;min-height:1em}
+.st.ok{color:var(--ok)} .st.bad{color:var(--bad)}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--mut)}
+@media (max-width:640px){.row{grid-template-columns:1fr}}
+</style><script src="/common.js"></script>
+</head><body>
+<header>
+  <h1>Settings</h1>
+  <input type="search" id="q" placeholder="search settings">
+  <span class="mut" id="top">changes are saved and used right away</span>
+  <span style="flex:1"></span>
+  <a href="/">panel</a>
+</header>
+<main id="list"><p class="mut">Loading...</p></main>
+<script>
+const $=id=>document.getElementById(id);
+const H={'X-Panel':'1','Content-Type':'application/json'};
+let all=[];
+const ORDER=['Ollama','Chat','Memory','Diary','Panel','Pet'];
+const LABEL={'Ollama':'AI server'};
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function same(a,b){return String(a)===String(b);}
+function ctl(s,i){
+  const id='s'+i;
+  if(s.type==='bool') return '<input type="checkbox" id="'+id+'"'+(s.value?' checked':'')+'>';
+  if(s.type==='int'||s.type==='float') return '<input type="number" id="'+id+'" step="'+(s.type==='int'?'1':'0.05')+'" value="'+esc(s.value)+'">';
+  if(String(s.value).length>60||String(s.def).length>60) return '<textarea id="'+id+'">'+esc(s.value)+'</textarea>';
+  return '<input type="text" id="'+id+'" value="'+esc(s.value)+'">';
+}
+function draw(){
+  const q=$('q').value.trim().toLowerCase();
+  const secs=[...new Set(all.map(s=>s.section))].sort((a,b)=>(ORDER.indexOf(a)+99)%99-(ORDER.indexOf(b)+99)%99||a.localeCompare(b));
+  let h='';
+  for(const sec of secs){
+    const rows=all.map((s,i)=>[s,i]).filter(([s])=>s.section===sec&&(!q||(s.key+' '+s.desc+' '+sec).toLowerCase().includes(q)));
+    if(!rows.length) continue;
+    h+='<section><h2>'+esc(LABEL[sec]||sec)+'</h2>';
+    for(const [s,i] of rows){
+      const long=s.type==='string'&&(String(s.value).length>60||String(s.def).length>60);
+      h+='<div class="row'+(long?' wide':'')+'"><div><div class="name">'+esc(s.key)+(s.restart?' <span class="tag">needs a game restart</span>':'')+'</div><div class="desc">'+esc(s.desc)+'</div></div>'+
+         '<div><div class="ctl">'+ctl(s,i)+'<button data-r="'+i+'"'+(same(s.value,s.def)?' hidden':'')+'>default</button></div><div class="st" id="t'+i+'"></div></div></div>';
+    }
+    h+='</section>';
+  }
+  $('list').innerHTML=h||'<p class="mut">Nothing matches.</p>';
+  all.forEach((s,i)=>{
+    const el=$('s'+i); if(!el) return;
+    if(s.type==='bool') el.onchange=()=>save(i,el.checked?'true':'false');
+    else el.onchange=()=>save(i,el.value);
+  });
+  document.querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>{const i=+b.dataset.r; save(i,String(all[i].def),true);});
+}
+async function save(i,val,redraw){
+  const s=all[i], st=$('t'+i);
+  st.className='st'; st.textContent='saving...';
+  try{
+    const r=await (await fetch('/api/settings/set',{method:'POST',headers:H,body:JSON.stringify({section:s.section,key:s.key,value:val})})).json();
+    if(!r.ok){ st.className='st bad'; st.textContent=r.error||'not saved'; return; }
+    s.value=s.type==='bool'?val==='true':(s.type==='string'?val:Number(val));
+    st.className='st ok'; st.textContent=s.restart?'saved, restart the game to use it':'saved';
+    if(redraw){ draw(); const t=$('t'+i); if(t){t.className='st ok'; t.textContent='back to default';} }
+    else { const b=document.querySelector('button[data-r="'+i+'"]'); if(b) b.hidden=same(s.value,s.def); }
+  }catch(e){ st.className='st bad'; st.textContent='the game is not running'; }
+}
+async function load(){
+  try{ all=(await (await fetch('/api/settings')).json()).settings; draw(); }
+  catch(e){ $('list').innerHTML='<p class="mut">Could not reach the game. Is it running with the mod?</p>'; }
+}
+$('q').oninput=draw;
+load();
+</script>
+<script src="/gameui.js"></script>
+</body></html>

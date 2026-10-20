@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>JunLink</AssemblyName>
+    <AssemblyName Condition="'$(Private)'=='true'">JunLink.Private</AssemblyName>
+    <RootNamespace>MdrgPanel</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- dotnet build                      -> the public build (no money/stat editor)
+         dotnet build -p:Private=true     -> your private build (keeps the editor), a separate DLL name -->
+    <DefineConstants Condition="'$(Private)'=='true'">$(DefineConstants);PRIVATE_BUILD</DefineConstants>
+    <!-- CHANGE THIS if your game folder is elsewhere (the one with BepInEx inside) -->
+    <GameDir>C:\Path\To\Game</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- the MelonLoader build lives in its own folder with its own project -->
+    <Compile Remove="Melon\**" />
+    <EmbeddedResource Remove="Melon\**" />
+    <None Remove="Melon\**" />
+    <Reference Include="$(GameDir)\BepInEx\core\*.dll" />
+    <Reference Include="$(GameDir)\BepInEx\interop\*.dll" />
+    <EmbeddedResource Include="panel.html" />
+    <EmbeddedResource Include="stories.html" />
+    <EmbeddedResource Include="stage.html" />
+    <EmbeddedResource Include="pet.html" />
+    <EmbeddedResource Include="diary.html" />
+    <EmbeddedResource Include="settings.html" />
+    <EmbeddedResource Include="packs.html" />
+    <EmbeddedResource Include="common.js" />
+    <EmbeddedResource Include="logo.svg" />
+    <EmbeddedResource Include="panel_logo.png" />
+    <EmbeddedResource Include="gameui.css" />
+    <EmbeddedResource Include="fonts.css" />
+    <EmbeddedResource Include="montserrat-500.woff2" />
+    <EmbeddedResource Include="montserrat-600.woff2" />
+    <EmbeddedResource Include="montserrat-700.woff2" />
+    <EmbeddedResource Include="montserrat-800.woff2" />
+    <EmbeddedResource Include="gameui.js" />
+    <EmbeddedResource Include="jun_characters.txt" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Jun Link story editor</title>
+<style>
+:root{color-scheme:dark;--bg:#14101c;--card:#1f1830;--line:#352a52;--fg:#eee;--mut:#a99bc7;--acc:#d6336c;--ok:#4cc38a;--bad:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;font:15px system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--fg);display:grid;grid-template-columns:250px 1fr 300px;gap:12px;padding:12px;height:100vh}
+@media(max-width:1000px){body{grid-template-columns:1fr;height:auto}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;min-height:0;overflow:auto}
+h2{margin:0 0 8px;font-size:16px}
+input,button,select,textarea{font:inherit;color:inherit;background:#2a2140;border:1px solid var(--line);border-radius:8px;padding:8px}
+button{cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.p{background:var(--acc);border-color:var(--acc)}
+.row{display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;align-items:center}
+.row input[type=text]{flex:1;min-width:0}
+#list button{display:block;width:100%;text-align:left;margin:3px 0}
+#list button.on{border-color:var(--acc);background:#3b2a63}
+textarea{flex:1;min-height:360px;width:100%;font:14px/1.5 Consolas,Menlo,monospace;resize:none;white-space:pre;tab-size:2}
+.mut{color:var(--mut);font-size:13px}
+#msg{white-space:pre-wrap;margin-top:6px}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+code{background:#2a2140;border-radius:4px;padding:1px 4px}
+pre{background:#2a2140;border-radius:8px;padding:8px;white-space:pre-wrap;font-size:13px;margin:6px 0}
+a{color:var(--acc)}
+</style>
+<script src="/common.js"></script>
+</head>
+<body>
+<div class='card'>
+  <h2>Stories</h2>
+  <div class='row'><button class='p' id='newBtn'>+ New story</button></div>
+  <div id='list'></div>
+  <div class='mut' style='margin-top:auto'><a href='/'>&larr; back to the panel</a></div>
+</div>
+
+<div class='card'>
+  <h2>Editor</h2>
+  <div class='row'><input type='text' id='fid' placeholder='file name, e.g. rainy_night' maxlength='60'>
+    <button class='p' id='saveBtn'>Save</button><button id='checkBtn'>Check</button><button id='playBtn'>Play in the game</button><button id='delBtn'>Delete</button></div>
+  <div class='row mut'>Insert:
+    <button data-ins='scene'>Scene</button><button data-ins='bot'>Jun line</button><button data-ins='player'>Anon line</button>
+    <button data-ins='narr'>Narration</button><button data-ins='color'>Name colour</button><button data-ins='choice'>Choice</button><button data-ins='goto'>Go to</button>
+    <select id='tag'><option value=''>+ face/gesture</option>
+      <option>happy</option><option>veryhappy</option><option>sad</option><option>verysad</option><option>angry</option><option>veryangry</option>
+      <option>shy</option><option>veryshy</option><option>surprised</option><option>wave</option><option>point</option><option>lecture</option><option>clench</option></select></div>
+  <div class='row mut'>Characters:
+    <select id='chr'></select>
+    <select id='cpos'><option value='center'>center</option><option value='left'>left</option><option value='right'>right</option><option value='-1.4'>far left (-1.4)</option><option value='-0.5'>a bit left (-0.5)</option><option value='0.5'>a bit right (0.5)</option><option value='1.4'>far right (1.4)</option></select>
+    <button id='cshow'>Show on screen</button><button id='cmove'>Move</button><button id='chide'>Hide</button><button id='cline'>Line as this character</button><button id='chall'>Hide all</button><button id='cstage'>Insert stage</button><a href='/stage' target='_blank' style='margin-left:6px'>open stage page</a><a href='/packs' target='_blank' style='margin-left:6px'>story packs</a><button id='cface'>Face</button><select id='bgsel'><option value=''>+ background</option><option>room</option><option>outside</option><option>shop</option><option>clothier</option><option>shower</option><option>pc</option><option>cuddle</option><option>changingroom</option><option>hospital</option><option>flashback</option></select><select id='musel'><option value=''>music (loading...)</option></select><button id='muplay'>&#9654; Preview</button><button id='muins'>Insert @music</button><button id='mustop'>&#9632; Stop</button><button id='muoff'>Insert @music stop</button><select id='junsel'><option value=''>+ Jun position</option><option value='left'>left</option><option value='center'>center</option><option value='right'>right</option><option value='-1.4'>far left (-1.4)</option><option value='-0.5'>a bit left (-0.5)</option><option value='hide'>hide</option></select><button id='coutfit'>Outfit</button></div>
+  <textarea id='ed' spellcheck='false' placeholder='Pick a story on the left or press + New story'></textarea>
+  <div id='msg' class='mut'></div>
+</div>
+
+<div class='card'>
+  <h2>How to write a story</h2>
+  <div class='mut'>A story is a list of <b>scenes</b>. Each scene has lines, then either choices or a jump to another scene.</div>
+<div class='mut'><b>Characters:</b> <code>@show Annalie left</code> puts her on screen (left, center, right, or a number: -1 is left, 0 the middle, 1 right, so <code>@show Annalie -0.5</code> is halfway to the left), <code>@move Annalie 0.3</code> slides her to a new spot without showing her again, <code>@move Annalie 0.3 -0.5</code> (the last number is height, negative is lower), <code>@slide Melissa -1.6 9</code> glides her there over 9 seconds (the story keeps going while she moves) and <code>@stop Melissa</code> freezes her where she is, <code>@size Annalie 0.8</code> makes her smaller or bigger (1 = the game's size; you can also put it last on a show line, <code>@show Annalie 0.1 0.8</code>), <code>@hide Annalie</code> or <code>@hide all</code> removes her. Faces: write them as tags on her lines, <code>Annalie [sad]: ...</code>, or change them with <code>@face Annalie pervygrin</code>. Annalie's faces are normal, eyeclosed (happy), sad, shocked, pervygrin. Outfits: <code>@outfit Annalie Halloween_Outfit</code> or <code>@outfit Annalie default</code>. Backgrounds: <code>@background clothier</code> fades to black, switches to that place, and fades back (room, outside, shop, clothier, shower, pc, cuddle, changingroom, hospital, flashback). <code>@jun -1.1 1.4</code> sets her size too (the second number, 1 = her room size), <code>@jun left</code> puts Jun on screen in the outside, shop and clothier backgrounds (left, center, right, a number like <code>@jun -1.4</code>, or hide); in the room she is always there. When the story ends it returns to where you were. <b>Music:</b> <code>@music Rainy Day</code> plays one of the game's own tracks (the name is matched loosely against the game's track names, e.g. Fishing_Rainy_Day, Cuddle_If_Only, BadEnd_A_Soft_Decay), <code>@music Cuddle</code> plays a whole category and the game shuffles it, <code>@music stop</code> gives the game's own music back, <code>@music auto</code> goes back to the default for the background. Without any @music, each <code>@background</code> picks a fitting track by itself (outside: street music, shop: Cashier theme, clothier: Annalie theme, hospital and flashback: sad story tracks). The music is put back when the story ends. The full list of track names is written to the log ({{LOG}}) the first time a story plays music. Her lines are <code>Annalie: text</code>. These are a first version: press F7 in the game for the full list of IDs.</div>
+<div class='mut'><b>Name colours:</b> the tag colour comes from the game (Annalie purple, Melissa green, the player is called <code>You</code>, and so on). For your own characters or to override one, add <code>color: Name = #rrggbb</code> near the top.</div>
+<pre>title: Rainy night
+// notes start with //
+
+# start
+Narrator: Rain taps on the window.
+{bot} [happy][wave]: Hello, {player}!
+{player}: Hi.
+? Ask about her day -> day
+? Just sit with her -> sit
+
+# day
+{bot} [shy]: It was fine.
+-> end
+
+# sit
+{bot} [veryhappy]: Thank you.
+-> end</pre>
+  <div class='mut'>
+  <p><code># name</code> starts a scene; the first one is the start.</p>
+  <p><code>Name [tags]: text</code> a spoken line. Use <code>{bot}</code> and <code>{player}</code> for the names. <code>Narrator</code> shows no name.</p>
+  <p><code>? text -&gt; scene</code> a choice button. <code>-&gt; scene</code> jumps, <code>-&gt; end</code> finishes the story.</p>
+  <p>Tags on {bot} lines change her face and gestures: happy, sad, angry, shy, surprised (add <code>very</code>), wave, point, lecture, clench.</p>
+  <p>In the game press <b>F3</b> to pick a story, and F3 again to stop one. Her mouth moves and the camera zooms in while it plays.</p>
+  <p>Stories are plain files in <code>{{ROOT}}\jun_stories</code>.</p></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const H={'X-Panel':'1','Content-Type':'application/json'};
+const post=async(p,b)=>(await fetch(p,{method:'POST',headers:H,body:JSON.stringify(b||{})})).json();
+let cur='', clean='', knownIds=[];
+const M=window.MDRG||{toast:()=>{},ask:async(q)=>confirm(q)};
+function dirty(){return $('ed').value!==clean;}
+async function okToLeave(what){ if(!dirty()) return true; return await M.ask('You have unsaved changes in this story. '+what+' anyway? The changes will be lost.',{ok:what,danger:true,title:'Unsaved changes'}); }
+window.addEventListener('beforeunload',e=>{ if(dirty()){ e.preventDefault(); e.returnValue=''; } });
+const NEW=`title: My new story
+// Lines starting with // are notes.
+
+# start
+Narrator: Something happens.
+{bot} [happy]: Hello, {player}!
+{player}: Hi.
+? Say something kind -> kind
+? Say nothing -> end
+
+# kind
+{bot} [shy]: ...Thank you.
+-> end
+`;
+function show(t,cls){const m=$('msg');m.className=cls||'mut';m.textContent=t;}
+async function refresh(selectId){
+  const items=await (await fetch('/api/stories')).json();
+  knownIds=items.map(i=>i.id);
+  const l=$('list'); l.innerHTML='';
+  items.forEach(it=>{const b=document.createElement('button');b.textContent=it.title+(it.title!==it.id?'  ('+it.id+')':'');
+    if(it.id===selectId||it.id===cur)b.className='on'; b.onclick=async()=>{ if(it.id!==cur && !(await okToLeave('Open '+it.title))) return; load(it.id); }; l.appendChild(b);});
+  if(!items.length) l.innerHTML="<div class='mut'>No stories yet.</div>";
+}
+async function load(id){
+  const r=await fetch('/api/story?id='+encodeURIComponent(id)); if(!r.ok){show('Could not load '+id,'bad');return;}
+  const j=await r.json(); cur=j.id; $('fid').value=j.id; $('ed').value=j.text; clean=j.text; show(''); refresh(cur);
+  if(cur.startsWith('pack--')) M.toast('This story comes from a story pack. Saving makes your own copy; the pack stays as it is.','info',5000);
+}
+function report(j,verb){
+  if(j.ok) show((verb||'Checked')+': no problems.','ok');
+  else show((j.saved?'Saved, but fix these before playing:\n':'Problems:\n')+j.errors.map(e=>' - '+e).join('\n'),'bad');
+}
+$('newBtn').onclick=async()=>{ if(!(await okToLeave('Start a new story'))) return; cur='';$('fid').value='';$('ed').value=NEW;clean=NEW;show('Give it a file name, then Save.');refresh();};
+async function saveNow(){
+  const id=$('fid').value.trim();
+  if(!id){ show('Give it a file name first (the box above the editor).','bad'); M.toast('Give the story a file name first.','bad'); return null; }
+  const safe=id.replace(/ /g,'_').replace(/[^A-Za-z0-9_-]/g,'');
+  if(safe!==cur && knownIds.includes(safe) && !(await M.ask('A story called "'+safe+'" already exists. Saving will replace it with this one.',{ok:'Replace it',danger:true,title:'Overwrite story?'}))) return null;
+  const text=$('ed').value;
+  const j=await post('/api/story/save',{id:id,text:text});
+  if(j.saved){ cur=j.id; $('fid').value=j.id; clean=text; refresh(cur); M.toast(j.ok?'Saved "'+j.id+'".':'Saved, but it has problems: see the list.', j.ok?'ok':'bad'); }
+  else M.toast('Not saved: '+((j.errors&&j.errors[0])||'unknown problem'),'bad');
+  report(j,'Saved');
+  return j;
+}
+$('saveBtn').onclick=saveNow;
+$('checkBtn').onclick=async()=>report(await post('/api/story/check',{id:$('fid').value,text:$('ed').value}),'Checked');
+let playAsked=false;
+$('playBtn').onclick=async()=>{
+  if(!playAsked && !(await M.ask('This saves the story and starts it in the game right away. Anything she is doing on screen is interrupted. Load a save first and have her on screen.',{ok:'Save and play',title:'Play in the game'}))) return;
+  playAsked=true;
+  const j=await saveNow(); if(!j) return;
+  if(!j.ok){ M.toast('Fix the problems before playing.','bad'); return; }
+  const pr=await post('/api/story/play',{id:j.id});
+  if(pr&&pr.ok===false){ show(pr.error||'The game did not start the story.','bad'); M.toast(pr.error||'The game did not start the story.','bad',8000); return; }
+  show('Sent to the game. Make sure the save is loaded and she is on screen.','ok'); M.toast('Playing "'+j.id+'" in the game.','ok');
+};
+$('delBtn').onclick=async()=>{
+  const id=$('fid').value.trim(); if(!id) return;
+  if(id.startsWith('pack--')){ M.toast('Stories from a pack cannot be deleted here. Remove the .storypack file to remove them.','bad',6000); return; }
+  if(!(await M.ask('Delete the story "'+id+'"? The file is removed from your stories folder and cannot be brought back.',{ok:'Delete',danger:true}))) return;
+  const r=await post('/api/story/delete',{id:id});
+  if(r.ok){ cur='';$('fid').value='';$('ed').value='';clean='';show('Deleted.');M.toast('Deleted "'+id+'".','ok');refresh(); }
+  else M.toast('Could not delete "'+id+'".','bad');
+};
+function insert(txt){
+  const e=$('ed'); const s=e.selectionStart, t=e.value;
+  const pre=(s>0&&t[s-1]!=='\n')?'\n':'';
+  e.value=t.slice(0,s)+pre+txt+t.slice(e.selectionEnd); const p=s+pre.length+txt.length; e.focus(); e.setSelectionRange(p,p);
+}
+const INS={color:'color: Name = #c08040\n',scene:'\n# new_scene\n',bot:'{bot} [happy]: ',player:'{player}: ',narr:'Narrator: ',choice:'? Choice text -> scene_name\n',goto:'-> end\n'};
+document.querySelectorAll('[data-ins]').forEach(b=>b.onclick=()=>insert(INS[b.dataset.ins]));
+const CHARS=['Annalie','Annalie_Outside','BigDaddyHurt','Britannia','Cashier','mrsfisher','Hobo','Landlord','Nun','Nun_NewOutfit','Policeman','Policewoman','Priestbot','FashionShowJun','FashionShowOther','Paradisium1','Paradisium2','UnknownMan1','UnknownMan2','UnknownMan3','UnknownWoman'];
+$('chr').innerHTML=CHARS.map(c=>'<option>'+c+'</option>').join('');
+$('cshow').onclick=()=>insert('@show '+$('chr').value+' '+$('cpos').value+'\n');
+$('cmove').onclick=()=>insert('@move '+$('chr').value+' '+$('cpos').value+'\n');
+$('chide').onclick=()=>insert('@hide '+$('chr').value+'\n');
+$('cface').onclick=()=>insert('@face '+$('chr').value.replace(/_.*/,'')+' sad\n');
+$('coutfit').onclick=()=>insert('@outfit '+$('chr').value.replace(/_.*/,'')+' Halloween_Outfit\n');
+$('junsel').onchange=()=>{const v=$('junsel').value;if(v){insert('@jun '+v+'\n');$('junsel').value='';}};
+$('bgsel').onchange=()=>{const v=$('bgsel').value;if(v){insert('@background '+v+'\n');$('bgsel').value='';}};
+$('chall').onclick=()=>insert('@hide all\n');
+let muTries=0;
+async function loadMusic(){
+  try{const bg=await (await fetch('/api/backgrounds')).json(); const bs=$('bgsel'); if(Array.isArray(bg)&&bg.length){bs.innerHTML='<option value="">+ background</option>'+bg.map(n=>'<option>'+n+'</option>').join('');}}catch(e){}
+  let names=[]; try{names=await (await fetch('/api/music')).json();}catch(e){}
+  const sel=$('musel');
+  if(!names.length){ if(muTries++<20) setTimeout(loadMusic,3000); sel.options[0].textContent='music (not loaded yet...)'; return; }
+  sel.innerHTML="<option value=''>music (pick one)</option>";
+  const groups={}; names.forEach(n=>{const g=n.split('_')[0]; (groups[g]=groups[g]||[]).push(n);});
+  Object.keys(groups).forEach(g=>{
+    const og=document.createElement('optgroup'); og.label=g;
+    const all=document.createElement('option'); all.value=g; all.textContent='all '+g+' (shuffle)'; og.appendChild(all);
+    groups[g].forEach(n=>{const o=document.createElement('option'); o.value=n.replace(/_/g,' '); o.textContent=n.substring(g.length+1).replace(/_/g,' '); og.appendChild(o);});
+    sel.appendChild(og);
+  });
+}
+loadMusic();
+$('muins').onclick=()=>{const v=$('musel').value; if(v) insert('@music '+v+'\n');};
+$('muoff').onclick=()=>insert('@music stop\n');
+$('muplay').onclick=()=>{const v=$('musel').value; if(v) fetch('/api/music/play',{method:'POST',headers:H,body:JSON.stringify({name:v})}).then(()=>M.toast('Playing '+v+' in the game.','info'));};
+$('mustop').onclick=()=>fetch('/api/music/play',{method:'POST',headers:H,body:JSON.stringify({name:'stop'})});
+$('cstage').onclick=()=>{let t='';try{t=localStorage.getItem('mdrgStageLines')||''}catch(e){} if(!t){M.toast('Nothing yet: set up the scene on the stage page and press Send to story editor.','info',5000);return;} insert(t);};
+$('cline').onclick=()=>insert($('chr').value.replace(/_.*/,'')+' [happy]: ');
+$('tag').onchange=()=>{const v=$('tag').value;if(v){insert('['+v+']');$('tag').value='';}};
+$('ed').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart;e.target.value=e.target.value.slice(0,s)+'  '+e.target.value.slice(e.target.selectionEnd);e.target.setSelectionRange(s+2,s+2);}
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();$('saveBtn').click();}});
+refresh();
+</script>
+<script src="/gameui.js"></script>
+</body>
+</html>

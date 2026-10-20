@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jun Link stage</title>
+<style>
+:root{
+  --bg:#14121a; --panel:#1d1a26; --panel2:#252133; --line:#34304a; --text:#ece8f6; --mut:#9d97b5;
+  --acc:#b48cff; --acc2:#ff8fd1; --ok:#58d68d; --bad:#ff6b6b; --jun:#6fd3ff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:16px;margin:0 8px 0 0}
+a{color:var(--acc)}
+button,select,input{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.pri{background:var(--acc);color:#1a1230;border-color:var(--acc);font-weight:600}
+button.bad:hover{border-color:var(--bad);color:var(--bad)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mut);margin-right:6px}
+.dot.on{background:var(--ok)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;padding:16px;max-width:1400px;margin:0 auto}
+@media(max-width:980px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.card h2{font-size:13px;margin:0 0 8px;color:var(--mut);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.bgs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.bgs button.sel{background:var(--acc);color:#1a1230;border-color:var(--acc);font-weight:600}
+.stagewrap{position:relative}
+.stage{position:relative;width:100%;aspect-ratio:16/9;background:linear-gradient(180deg,#2a2540,#1a1728);border:1px solid var(--line);border-radius:10px;overflow:hidden;touch-action:none;user-select:none}
+.stage .grid{position:absolute;inset:0;pointer-events:none}
+.stage .vline{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07)}
+.stage .vline.c{background:rgba(255,255,255,.18)}
+.stage .vlab{position:absolute;bottom:4px;font-size:10px;color:var(--mut);transform:translateX(-50%)}
+.stage .dlg{position:absolute;left:14.8%;right:14.8%;bottom:1.5%;height:24%;border:1px dashed rgba(255,255,255,.18);border-radius:6px;pointer-events:none;color:rgba(255,255,255,.25);font-size:11px;padding:4px 8px}
+.m{position:absolute;transform:translate(-50%,-50%);cursor:grab;border:2px solid var(--acc);background:rgba(180,140,255,.12);border-radius:10px;display:flex;align-items:flex-start;justify-content:center}
+.m.jun{border-color:var(--jun);background:rgba(111,211,255,.12)}
+.m.off{opacity:.35;cursor:not-allowed}
+.m.sel{box-shadow:0 0 0 2px rgba(255,255,255,.5)}
+.m .lab{margin-top:4px;font-size:11px;background:rgba(0,0,0,.55);padding:1px 6px;border-radius:6px;white-space:nowrap;pointer-events:none}
+.m .pivot{position:absolute;left:50%;top:50%;width:11px;height:11px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--acc2);pointer-events:none}
+.m.jun .pivot{background:var(--jun)}
+.hint{color:var(--mut);font-size:12px;margin-top:8px}
+.chk{display:block;margin-top:10px;font-size:12.5px;color:var(--text)}
+.chk input{margin-right:6px;accent-color:var(--acc)}
+.row{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--panel2)}
+.row.sel{border-color:var(--acc)}
+.row .nm{font-weight:600}
+.row .nm.jun{color:var(--jun)}
+.row .f{grid-column:1/3;display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 8px;align-items:center;color:var(--mut);font-size:12px}
+.row input[type=number]{width:72px;padding:4px 6px}
+.row input[type=range]{width:100%;padding:0;accent-color:var(--acc)}
+textarea{width:100%;min-height:140px;background:#100e16;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12.5px/1.5 ui-monospace,Consolas,monospace;resize:vertical}
+.addrow{display:flex;gap:6px;margin-bottom:10px}
+.addrow select{flex:1;min-width:0}
+#msg{font-size:12px;min-height:18px;color:var(--mut)}
+#msg.err{color:var(--bad)}
+</style>
+<script src="/common.js"></script>
+</head>
+<body>
+<header>
+  <h1>Stage</h1>
+  <span><span class="dot" id="dot"></span><span id="stat">checking…</span></span>
+  <button class="pri" id="open">Open stage in game</button>
+  <button class="bad" id="close">Close stage</button>
+  <span id="msg"></span>
+  <span style="flex:1"></span>
+  <a href="/stories">story editor</a>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <h2>Background</h2>
+      <div class="bgs" id="bgs"></div>
+      <div class="stagewrap"><div class="stage" id="stage"><div class="grid" id="grid"></div><div class="dlg">dialogue box area</div></div></div>
+      <label class="chk"><input type="checkbox" id="boxchk"> show a sample text box in the game (to judge how much it covers; off = no dialogue at all)</label>
+      <div class="hint">Drag a box to move it. Mouse wheel over a box changes its size. The picture is a rough guide, the game is the real view. Positions snap to 0.05, hold Alt to drag freely.</div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Lines for your story</h2>
+      <textarea id="out" readonly></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="pri" id="copy">Copy lines</button>
+        <button id="tostory">Send to story editor</button>
+      </div>
+      <div class="hint">"Send to story editor" keeps these lines ready. In the story editor press <b>Insert stage</b> to drop them where your cursor is.</div>
+    </div>
+  </section>
+  <aside>
+    <div class="card">
+      <h2>On stage</h2>
+      <div class="addrow"><select id="chr"></select><button id="add">Add</button></div>
+      <div id="rows"></div>
+      <div class="hint">Jun only shows on outside, shop and clothier backgrounds. In your room the game places her itself.</div>
+    </div>
+  </aside>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const CHARS=['Annalie','Annalie_Outside','BigDaddyHurt','Britannia','Cashier','mrsfisher','Hobo','Landlord','Nun','Nun_NewOutfit','Policeman','Policewoman','Priestbot','FashionShowJun','FashionShowOther','Paradisium1','Paradisium2','UnknownMan1','UnknownMan2','UnknownMan3','UnknownWoman'];
+const DEF_SIZE={Annalie_Outside:0.72};
+const BASE={Cashier:0.6,Melissa:0.6};   // the game's own default scale, only used to draw the boxes
+const SLOTS=[0,0.6,-0.6,1.2,-1.2];
+let BGS=['room','outside','shop','clothier','shower','pc','cuddle','changingroom','hospital','flashback'];
+let SPREAD=4, active=false, sel='jun';
+let S={bg:'room',jun:{on:false,x:-1,size:1,y:0},chars:[]};
+try{const t=JSON.parse(localStorage.getItem('mdrgStage')||'null'); if(t&&t.jun&&Array.isArray(t.chars)) S=t;}catch(e){}
+function save(){try{localStorage.setItem('mdrgStage',JSON.stringify(S))}catch(e){}}
+const fmt=n=>String(parseFloat((+n).toFixed(2)));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---- talking to the game ---- */
+let pending=[], busyUntil=0, sending=false;
+function queue(cmd,key){
+  if(key){const i=pending.findIndex(p=>p.key===key); if(i>=0){pending[i].cmd=cmd; return;}}
+  pending.push({cmd,key});
+}
+async function post(path,obj){
+  const r=await fetch(path,{method:'POST',headers:{'X-Panel':'1','Content-Type':'application/json'},body:JSON.stringify(obj||{})});
+  return r.json();
+}
+function say(t,err){const m=$('msg'); m.textContent=t||''; m.className=err?'err':'';}
+setInterval(async()=>{
+  if(sending||!active||!pending.length||Date.now()<busyUntil) return;
+  sending=true;
+  try{
+    for(let n=0;n<6&&pending.length;n++){
+      const p=pending.shift();
+      const j=await post('/api/stage/cmd',{cmd:p.cmd});
+      if(!j.ok){say(j.error||'the game refused that',true); if(/not open/.test(j.error||'')) {active=false;paint();} } else say('');
+      if(/^@?background/.test(p.cmd)) {busyUntil=Date.now()+2800; break;}
+    }
+  }catch(e){say('cannot reach the plugin',true)}
+  sending=false;
+},60);
+
+function junCmd(){return '@jun '+fmt(S.jun.x)+' '+fmt(S.jun.size)+' '+fmt(S.jun.y);}
+function sendJun(){ if(S.jun.on) queue(junCmd(),'jun'); }
+function sendMove(c){ queue('@move '+c.id+' '+fmt(c.x)+' '+fmt(c.y),'move:'+c.id); }
+function sendSize(c){ queue('@size '+c.id+' '+fmt(c.size),'size:'+c.id); }
+function resync(){
+  pending=[];
+  if(S.bg!=='room') queue('@background '+S.bg);
+  if(S.jun.on) queue(junCmd(),'jun');
+  S.chars.forEach(c=>queue('@show '+c.id+' '+fmt(c.x)+' '+fmt(c.size)+' '+fmt(c.y)));
+}
+
+/* ---- stage drawing ---- */
+// 1080p reference: x px = 960 + slot*SPREAD*100 ; y px = 540 + (0.51 - height)*100
+const toPct=(slot,h)=>({x:(960+slot*SPREAD*100)/1920*100, y:(540+(0.51-h)*100)/1080*100});
+const fromPx=(px,py,rect)=>({slot:((px-rect.left)/rect.width*1920-960)/100/SPREAD, h:0.51-((py-rect.top)/rect.height*1080-540)/100});
+function buildGrid(){
+  let h='';
+  for(let s=-2;s<=2;s+=0.5){
+    const x=(960+s*SPREAD*100)/1920*100; if(x<0||x>100) continue;
+    h+='<div class="vline'+(s===0?' c':'')+'" style="left:'+x+'%"></div>';
+    if(Number.isInteger(s)) h+='<div class="vlab" style="left:'+x+'%">'+s+'</div>';
+  }
+  $('grid').innerHTML=h;
+}
+function items(){
+  const a=[]; a.push({k:'jun',name:'Jun',o:S.jun,jun:true,off:!S.jun.on||S.bg==='room'});
+  S.chars.forEach(c=>a.push({k:c.id,name:c.id,o:c,jun:false,off:false}));
+  return a;
+}
+function paintStage(){
+  const st=$('stage'); st.querySelectorAll('.m').forEach(n=>n.remove());
+  items().forEach(it=>{
+    if(it.jun&&!S.jun.on) return;
+    const p=toPct(it.o.x,it.o.y), el=document.createElement('div');
+    const bs=BASE[it.k]||1, w=(it.jun?11:19)*it.o.size*bs, h=(it.jun?46:74)*it.o.size*bs;
+    el.className='m'+(it.jun?' jun':'')+(it.off?' off':'')+(sel===it.k?' sel':'');
+    el.style.left=p.x+'%'; el.style.top=p.y+'%'; el.style.width=w+'%'; el.style.height=h+'%';
+    el.innerHTML='<span class="lab">'+it.name+'</span><span class="pivot"></span>';
+    el.dataset.k=it.k;
+    el.addEventListener('pointerdown',e=>startDrag(e,it));
+    el.addEventListener('wheel',e=>{e.preventDefault(); const d=e.deltaY<0?0.05:-0.05; setSize(it,clamp(Math.round((it.o.size+d)*100)/100,0.1,3));},{passive:false});
+    st.appendChild(el);
+  });
+}
+let drag=null;
+function startDrag(e,it){
+  e.preventDefault(); sel=it.k; drag={it}; paintRows(); paintStage();
+}
+window.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  const rect=$('stage').getBoundingClientRect(), v=fromPx(e.clientX,e.clientY,rect), it=drag.it;
+  const snap=e.altKey?0.01:0.05, r=x=>Math.round(x/snap)*snap;
+  it.o.x=clamp(r(v.slot),-3.5,3.5); it.o.y=clamp(r(v.h),-3,3);
+  if(it.jun) sendJun(); else sendMove(it.o);
+  paintStage(); updateInputs(); makeOut(); save();
+});
+window.addEventListener('pointerup',()=>{drag=null});
+
+function setSize(it,v){
+  it.o.size=v; if(it.jun) sendJun(); else sendSize(it.o);
+  paintStage(); updateInputs(); makeOut(); save();
+}
+
+/* ---- side panel ---- */
+function paintRows(){
+  const box=$('rows'); box.innerHTML='';
+  items().forEach(it=>{
+    if(it.jun&&!S.jun.on){
+      const d=document.createElement('div'); d.className='row';
+      d.innerHTML='<span class="nm jun">Jun</span><button data-a="junon">Show Jun</button>';
+      d.querySelector('button').onclick=()=>{S.jun.on=true; sendJun(); afterChange();};
+      box.appendChild(d); return;
+    }
+    const d=document.createElement('div'); d.className='row'+(sel===it.k?' sel':'');
+    d.innerHTML='<span class="nm'+(it.jun?' jun':'')+'">'+it.name+'</span><button class="bad" data-a="rm">'+(it.jun?'Hide':'Remove')+'</button>'+
+      '<div class="f"><span>x</span><input type="range" min="-3" max="3" step="0.05" data-f="x"><input type="number" step="0.05" data-f="xn"><span></span>'+
+      '<span>height</span><input type="range" min="-3" max="3" step="0.05" data-f="y"><input type="number" step="0.05" data-f="yn"><span></span>'+
+      '<span>size</span><input type="range" min="0.1" max="3" step="0.05" data-f="s"><input type="number" step="0.05" min="0.1" max="3" data-f="sn"><span></span></div>';
+    d.dataset.k=it.k;
+    d.addEventListener('pointerdown',()=>{ if(sel!==it.k){sel=it.k; paintStage(); box.querySelectorAll('.row').forEach(r=>r.classList.toggle('sel',r.dataset.k===sel));} });
+    d.querySelector('[data-a=rm]').onclick=()=>{
+      if(it.jun){S.jun.on=false; if(active) queue('@jun hide','jun');}
+      else{ S.chars=S.chars.filter(c=>c!==it.o); if(active) queue('@hide '+it.o.id); }
+      afterChange();
+    };
+    const setX=v=>{it.o.x=clamp(+v||0,-3.5,3.5); it.jun?sendJun():sendMove(it.o);};
+    const setY=v=>{it.o.y=clamp(+v||0,-3,3); it.jun?sendJun():sendMove(it.o);};
+    const setS=v=>{setSize(it,clamp(+v||1,0.1,3));};
+    const wire=(f,fn,n)=>{ d.querySelector('[data-f='+f+']').addEventListener('input',e=>{fn(e.target.value); if(f!=='s'&&f!=='sn'){paintStage();updateInputs();makeOut();save();}}); };
+    wire('x',setX); wire('xn',setX); wire('y',setY); wire('yn',setY); wire('s',setS); wire('sn',setS);
+    box.appendChild(d);
+  });
+  updateInputs();
+}
+function updateInputs(){
+  document.querySelectorAll('#rows .row').forEach(r=>{
+    const it=items().find(i=>i.k===r.dataset.k); if(!it) return;
+    const set=(f,v)=>{const e=r.querySelector('[data-f='+f+']'); if(e&&document.activeElement!==e) e.value=fmt(v);};
+    set('x',it.o.x); set('xn',it.o.x); set('y',it.o.y); set('yn',it.o.y); set('s',it.o.size); set('sn',it.o.size);
+  });
+}
+
+/* ---- output ---- */
+function makeOut(){
+  const L=[];
+  L.push('@background '+S.bg);
+  if(S.jun.on){
+    let t='@jun '+fmt(S.jun.x);
+    if(S.jun.size!==1||S.jun.y!==0) t+=' '+fmt(S.jun.size);
+    if(S.jun.y!==0) t+=' '+fmt(S.jun.y);
+    L.push(t);
+  }
+  S.chars.forEach(c=>{
+    let t='@show '+c.id+' '+fmt(c.x);
+    const needSize=c.size!==1||c.y!==0||(DEF_SIZE[c.id]&&c.size!==DEF_SIZE[c.id])||c.id==='Annalie_Outside';
+    if(needSize) t+=' '+fmt(c.size);
+    if(c.y!==0) t+=' '+fmt(c.y);
+    L.push(t);
+  });
+  $('out').value=L.join('\n')+'\n';
+}
+function afterChange(){ paintRows(); paintStage(); makeOut(); save(); }
+
+/* ---- controls ---- */
+function paintBgs(){
+  $('bgs').innerHTML=BGS.map(b=>'<button data-b="'+b+'" class="'+(S.bg===b?'sel':'')+'">'+b+'</button>').join('');
+  $('bgs').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    S.bg=b.dataset.b; if(active) queue('@background '+S.bg); paintBgs(); afterChange();
+  });
+}
+$('chr').innerHTML=CHARS.map(c=>'<option>'+c+'</option>').join('');
+$('add').onclick=()=>{
+  const id=$('chr').value;
+  if(S.chars.some(c=>c.id===id)){ sel=id; afterChange(); return; }
+  const c={id,x:SLOTS[S.chars.length%SLOTS.length],size:DEF_SIZE[id]||1,y:0}; S.chars.push(c); sel=id;
+  if(active) queue('@show '+id+' '+fmt(c.x)+' '+fmt(c.size)+' '+fmt(c.y));
+  afterChange();
+};
+$('open').onclick=async()=>{ try{ await post('/api/stage/start'); say('opening the stage in the game…'); }catch(e){say('cannot reach the plugin',true)} };
+$('close').onclick=async()=>{ try{ await post('/api/stage/end'); say('closing…'); }catch(e){say('cannot reach the plugin',true)} };
+$('copy').onclick=async()=>{
+  const t=$('out').value;
+  try{await navigator.clipboard.writeText(t);}catch(e){$('out').select(); document.execCommand('copy');}
+  say('copied');
+};
+$('tostory').onclick=()=>{ try{localStorage.setItem('mdrgStageLines',$('out').value); say('ready: press Insert stage in the story editor');}catch(e){say('could not store',true)} };
+
+let boxOn=false; try{boxOn=localStorage.getItem('mdrgStageBox')==='1';}catch(e){}
+$('boxchk').checked=boxOn;
+async function sendBox(){ try{await post('/api/stage/box',{on:$('boxchk').checked});}catch(e){} }
+$('boxchk').onchange=()=>{ try{localStorage.setItem('mdrgStageBox',$('boxchk').checked?'1':'0');}catch(e){} if(active) sendBox(); };
+function paint(){
+  $('dot').className='dot'+(active?' on':'');
+  $('stat').textContent=active?'stage is open in the game':'stage is closed (press Open stage in game)';
+}
+async function poll(){
+  try{
+    const j=await (await fetch('/api/stage/info')).json();
+    if(j.spread&&j.spread!==SPREAD){SPREAD=j.spread; buildGrid(); paintStage();}
+    if(Array.isArray(j.backgrounds)&&j.backgrounds.length&&BGS.join()!==j.backgrounds.join()){BGS=j.backgrounds; paintBgs();}
+    if(j.active&&!active){ active=true; paint(); resync(); sendBox(); say('stage open'); }
+    else if(!j.active&&active){ active=false; paint(); say('stage closed'); }
+    else paint();
+  }catch(e){ active=false; $('stat').textContent='cannot reach the plugin'; $('dot').className='dot'; }
+}
+buildGrid(); paintBgs(); paintRows(); paintStage(); makeOut(); poll(); setInterval(poll,1500);
+</script>
+<script src="/gameui.js"></script>
+</body>
+</html>
