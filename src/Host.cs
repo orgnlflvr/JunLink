@@ -73,8 +73,8 @@ public static class Host
             catch { return false; }
         }
     }
-    public static string RootLabel { get { return IsMelon ? "UserData\\JunLink" : "BepInEx"; } }
-    public static string ConfigLabel { get { return IsMelon ? "UserData\\JunLink.cfg" : "BepInEx\\config\\local.mdrgpanel.cfg"; } }
+    public static string RootLabel { get { return IsMelon ? "UserData\\" + Mod.Folder : "BepInEx"; } }
+    public static string ConfigLabel { get { return IsMelon ? "UserData\\" + Mod.Folder + ".cfg" : "BepInEx\\config\\local.mdrgpanel.cfg"; } }
     public static string LogLabel { get { return IsMelon ? "MelonLoader\\Latest.log" : "BepInEx\\LogOutput.log"; } }
 
     // called by the loader file first thing in its start-up
@@ -85,7 +85,11 @@ public static class Host
         SettingsRegistry.Config = rec;
         Cfg.Init(rec);
         Cfg.Log = log;
+#if STORY_MOD
+        ClassInjector.RegisterTypeInIl2Cpp<StoryCreatorBehaviour>();
+#else
         ClassInjector.RegisterTypeInIl2Cpp<PanelBehaviour>();
+#endif
     }
 
     // called by the loader file after it has put PanelBehaviour into the game (so that Update() runs)

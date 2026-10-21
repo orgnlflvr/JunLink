@@ -466,3 +466,17 @@ Jun Link 1.0.0 - fixes from the first public test (untested in game)
 Jun Link 1.0.0 - panel chat (untested in game)
 - The panel chat no longer shows the hidden greeting instruction ("(Game event) The game was just loaded...") as if you had typed it.
   Her greeting reply is still shown.
+
+=== The split: Story Creator 1.0.0 + Jun Link 1.1.0 (untested in game) ===
+On Ikari's advice ("separate concerns into different mods"), one source now builds two independent mods:
+- Story Creator (-p:Mod=Story, StoryCreator.dll): custom stories, minigames, stage page, story packs, background export tool.
+  Web pages on port 8766 (/stories, /stage, /packs, /settings), settings key F9, files in UserData\StoryCreator, settings in
+  UserData\StoryCreator.cfg. Stories only need the save to be past the prologue (no Advanced AI / body parts check).
+  First start copies jun_stories, jun_backgrounds, tools and logo.png from UserData\JunLink (or UserData\MdrgPanel).
+  Stays off if MdrgPanelML.dll or a Jun Link older than 1.1 (which still has stories built in) is in Mods.
+- Jun Link 1.1.0 (default build, JunLink.dll; -p:Private=true for JunLink.Private.dll): AI chat, memory, greeting, diary, pet,
+  zoom. Port 8765, F2 chat, F4 zoom, F8 settings. Keeps the Advanced AI + body parts lock.
+- Each mod only binds its own settings (others keep their defaults in memory, unsaved and hidden), answers only its own pages
+  (the other mod's pages say where to find them), reacts only to its own keys, and registers its own component type
+  (StoryCreatorBehaviour / PanelBehaviour) and settings prefix (StoryCreator_ / MdrgPanel_), so both run side by side.
+- Panel links to stories now point to Story Creator on port 8766; story pages link to packs/settings instead of the panel.

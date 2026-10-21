@@ -26,9 +26,15 @@ using SayDialog = Fungus.SayDialog;
 // Powered by a local Ollama model. No IMGUI is used (this game strips it).
 
 // Keep this class tiny: only Unity's Update() and OnGUI() live here.
+#if STORY_MOD
+public class StoryCreatorBehaviour : MonoBehaviour
+{
+    public StoryCreatorBehaviour(IntPtr ptr) : base(ptr) { }
+#else
 public class PanelBehaviour : MonoBehaviour
 {
     public PanelBehaviour(IntPtr ptr) : base(ptr) { }
+#endif
 
     void Update()
     {
@@ -50,35 +56,35 @@ public class PanelBehaviour : MonoBehaviour
         {
             Event e = Event.current;
             if (e != null && InGameChat.StoryWaiting &&
-                ((e.type == EventType.MouseDown && e.button == 0) ||
+                Mod.Stories && ((e.type == EventType.MouseDown && e.button == 0) ||
                  (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Space || e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter))))
                 InGameChat.StoryAdvance = true;
-            if (e != null && e.type == EventType.KeyDown && e.keyCode == InGameChat.Key)
+            if (e != null && Mod.Chat && e.type == EventType.KeyDown && e.keyCode == InGameChat.Key)
             {
                 InGameChat.OpenRequested = true;
                 e.Use();
             }
-            else if (e != null && e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && InGameChat.InputIsOpen())
+            else if (e != null && Mod.Chat && e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && InGameChat.InputIsOpen())
             {
                 InGameChat.CloseInput();
                 e.Use();
             }
-            else if (e != null && e.type == EventType.KeyDown && e.keyCode == KeyCode.F7)
+            else if (e != null && Mod.Stories && e.type == EventType.KeyDown && e.keyCode == KeyCode.F7)
             {
                 AssetDump.CharsRequested = true;
                 e.Use();
             }
-            else if (e != null && e.type == EventType.KeyDown && e.keyCode == KeyCode.F6)
+            else if (e != null && Mod.Stories && e.type == EventType.KeyDown && e.keyCode == KeyCode.F6)
             {
                 AssetDump.Requested = true;
                 e.Use();
             }
-            else if (e != null && e.type == EventType.KeyDown && e.keyCode == InGameChat.StoryKey)
+            else if (e != null && Mod.Stories && e.type == EventType.KeyDown && e.keyCode == InGameChat.StoryKey)
             {
                 InGameChat.StoryMenuRequested = true;
                 e.Use();
             }
-            else if (e != null && e.type == EventType.KeyDown && e.keyCode == InGameChat.ZoomKey)
+            else if (e != null && Mod.Chat && e.type == EventType.KeyDown && e.keyCode == InGameChat.ZoomKey)
             {
                 InGameChat.ZoomRequested = true;
                 e.Use();
@@ -90,6 +96,35 @@ public class PanelBehaviour : MonoBehaviour
             }
         }
         catch { }
+    }
+}
+
+// Which mod this build is. One source, two mods (Ikari's advice: separate concerns into separate mods):
+//   STORY_MOD -> Story Creator: custom stories, minigames, stage, story packs.          http://127.0.0.1:8766
+//   (default) -> Jun Link: chat with Jun through your own local AI, memory, greeting, diary, pet.  http://127.0.0.1:8765
+// Each mod only reads its own settings, answers its own pages and reacts to its own keys, so both can run side by side.
+public static class Mod
+{
+#if STORY_MOD
+    public const string Name = "Story Creator", Folder = "StoryCreator", Version = "1.0.0";
+    public const bool Stories = true, Chat = false;
+    public const int DefaultPort = 8766; public const string DefaultSettingsKey = "F9";
+    public const string OtherName = "Jun Link", OtherWhat = "AI chat with Jun"; public const int OtherPort = 8765;
+#else
+    public const string Name = "Jun Link", Folder = "JunLink", Version = "1.1.0";
+    public const bool Stories = false, Chat = true;
+    public const int DefaultPort = 8765; public const string DefaultSettingsKey = "F8";
+    public const string OtherName = "Story Creator", OtherWhat = "custom stories and minigames"; public const int OtherPort = 8766;
+#endif
+    // settings each mod keeps; the rest still exist in memory with their defaults (the shared code reads them) but are not saved or shown
+    static readonly HashSet<string> storyKeys = new HashSet<string> {
+        "Panel.BackgroundFadeSeconds", "Panel.StoryInLog", "Panel.NativeChoices", "Panel.StoryMusic", "Panel.HangoutAnnalieScale",
+        "Panel.CharacterSize", "Panel.CharacterSpread", "Panel.StoryHotkey", "Panel.SettingsHotkey", "Panel.Port", "Requirements.Prologue", "Panel.AutoZoom" };
+    static readonly HashSet<string> sharedKeys = new HashSet<string> { "Panel.SettingsHotkey", "Panel.Port", "Requirements.Prologue", "Panel.AutoZoom" };
+    public static bool Uses(string section, string key)
+    {
+        string k = section + "." + key;
+        return Stories ? storyKeys.Contains(k) : (!storyKeys.Contains(k) || sharedKeys.Contains(k));
     }
 }
 
@@ -117,58 +152,64 @@ public static class Cfg
     public static Setting<string> DiaryPrompt;
     public const string TagRules = " Start every reply with one or two tags in square brackets. Mood: [happy] [sad] [angry] [shy] [surprised] [neutral] (add very, e.g. [veryhappy]). Optional gesture: [wave] only when greeting or saying goodbye, [point] or [lecture] when explaining. Example: [happy][wave] Hey, you are back! Write tags exactly as shown, lowercase, no dots or spaces. Speak only the words Jun says out loud. Never write actions or narration between asterisks like *smiles*.  Only when the player clearly asks you to do it and you agree, add ONE action tag: [feed] you give them or eat food (fills hunger), [rest] you rest or sleep (stamina), [heal] you tend to their wounds (health), [comfort] you cheer them up (mood). Never use an action tag otherwise. Never explain the tags.";
 
+    static Setting<T> B<T>(HostConfig c, string section, string key, T def, string desc)
+    {
+        if (Mod.Uses(section, key)) return c.Bind(section, key, def, desc);
+        T v = def; return new Setting<T>(() => v, x => v = x);
+    }
+
     public static void Init(HostConfig c)
     {
-        Hotkey = c.Bind("Panel", "Hotkey", "F2", "Key that opens the in-game chat (Unity KeyCode name, e.g. F2, Insert, Home).");
-        ReplyInBubble = c.Bind("Panel", "ReplyInBubble", true, "true = the bot says the reply in the game's own speech display. false (or if she is not on screen) = show it in a popup window.");
-        AutoZoom = c.Bind("Panel", "AutoZoom", true, "Zoom in on the bot when you open the chat (only on the interaction screen).");
-        KeepAlive = c.Bind("Panel", "KeepAlive", true, "Put her message back (at most twice, and only if it was seen on screen first) if the game wipes it early. Set false if the text ever types out twice.");
-        Actions = c.Bind("Chat", "Actions", true, "true = Jun can change her own stats when you ask her to (feed, rest, heal, comfort), using action tags.");
-        BackgroundFade = c.Bind("Panel", "BackgroundFadeSeconds", 0.7f, "How long the fade takes when a story uses @background.");
-        StoryInLog = c.Bind("Panel", "StoryInLog", true, "true = lines of your custom stories are added to the game's own dialogue log (the log button next to the text box), with the speaker's name and colour.");
-        NativeChoices = c.Bind("Panel", "NativeChoices", true, "true = story choices use the game's own choice buttons under the text box. false = the old centred popup.");
-        StoryMusic = c.Bind("Panel", "StoryMusic", true, "true = stories can play the game's own music (@music, and a fitting default for each @background). false = stories never touch the music.");
-        PetEnabled = c.Bind("Pet", "Enabled", true, "true = the pet page (http://127.0.0.1:8765/pet) can show Jun on a transparent background. It only renders while that page is open.");
-        PetFps = c.Bind("Pet", "Fps", 12, "Frames per second sent to the pet page (1-60). Lower = lighter on the PC.");
-        PetHeight = c.Bind("Pet", "Height", 800, "Height in pixels of the picture sent to the pet page (200-2000). Lower = lighter.");
-        PetBgFps = c.Bind("Pet", "BackgroundGameFps", 30, "While the pet is on your desktop and the game window is not the one you are using, the game is limited to this many frames per second (0 = do not limit). The game also keeps running when minimized so she keeps moving. Has no effect if the game's VSync forces its own rate.");
-        PetMuteBg = c.Bind("Pet", "MuteWhenInBackground", true, "true = while the pet is open and the game window is minimized or not the one you are using, the game's sound is muted (music and effects). It comes back when you switch to the game or close the pet.");
-        HangoutScale = c.Bind("Panel", "HangoutAnnalieScale", 0.72f, "Extra size for Annalie's hangout portrait (Annalie_Outside), which is drawn bigger than her shop portrait. Lower = smaller.");
-        CharSize = c.Bind("Panel", "CharacterSize", 1f, "Size of characters shown by @show (1 = default: a big bust portrait with its bottom at the screen edge).");
-        CharSpread = c.Bind("Panel", "CharacterSpread", 4f, "How far left/right (in game units) @show places a character from the centre.");
-        StoryHotkey = c.Bind("Panel", "StoryHotkey", "F3", "Key that opens the list of your custom stories (press it again to stop a story).");
-        SettingsHotkey = c.Bind("Panel", "SettingsHotkey", "F8", "Key that opens the settings page (http://127.0.0.1:8765/settings) in your browser.");
-        ZoomHotkey = c.Bind("Panel", "ZoomHotkey", "F4", "Key that toggles the zoom by hand.");
-        BubbleSeconds = c.Bind("Panel", "BubbleSeconds", 25, "How long a reply stays on screen after she finishes talking. 0 = until you chat again.");
-        SpeakSpeed = c.Bind("Panel", "SpeakSpeed", 30f, "Mouth speed in letters per second (higher = faster mouth).");
-        Port = c.Bind("Panel", "Port", 8765, "Open http://127.0.0.1:<Port> in your browser.");
+        Hotkey = B(c, "Panel", "Hotkey", "F2", "Key that opens the in-game chat (Unity KeyCode name, e.g. F2, Insert, Home).");
+        ReplyInBubble = B(c, "Panel", "ReplyInBubble", true, "true = the bot says the reply in the game's own speech display. false (or if she is not on screen) = show it in a popup window.");
+        AutoZoom = B(c, "Panel", "AutoZoom", true, "Zoom in on Jun when you chat with her or when she speaks in a story (only on the interaction screen).");
+        KeepAlive = B(c, "Panel", "KeepAlive", true, "Put her message back (at most twice, and only if it was seen on screen first) if the game wipes it early. Set false if the text ever types out twice.");
+        Actions = B(c, "Chat", "Actions", true, "true = Jun can change her own stats when you ask her to (feed, rest, heal, comfort), using action tags.");
+        BackgroundFade = B(c, "Panel", "BackgroundFadeSeconds", 0.7f, "How long the fade takes when a story uses @background.");
+        StoryInLog = B(c, "Panel", "StoryInLog", true, "true = lines of your custom stories are added to the game's own dialogue log (the log button next to the text box), with the speaker's name and colour.");
+        NativeChoices = B(c, "Panel", "NativeChoices", true, "true = story choices use the game's own choice buttons under the text box. false = the old centred popup.");
+        StoryMusic = B(c, "Panel", "StoryMusic", true, "true = stories can play the game's own music (@music, and a fitting default for each @background). false = stories never touch the music.");
+        PetEnabled = B(c, "Pet", "Enabled", true, "true = the pet page (http://127.0.0.1:8765/pet) can show Jun on a transparent background. It only renders while that page is open.");
+        PetFps = B(c, "Pet", "Fps", 12, "Frames per second sent to the pet page (1-60). Lower = lighter on the PC.");
+        PetHeight = B(c, "Pet", "Height", 800, "Height in pixels of the picture sent to the pet page (200-2000). Lower = lighter.");
+        PetBgFps = B(c, "Pet", "BackgroundGameFps", 30, "While the pet is on your desktop and the game window is not the one you are using, the game is limited to this many frames per second (0 = do not limit). The game also keeps running when minimized so she keeps moving. Has no effect if the game's VSync forces its own rate.");
+        PetMuteBg = B(c, "Pet", "MuteWhenInBackground", true, "true = while the pet is open and the game window is minimized or not the one you are using, the game's sound is muted (music and effects). It comes back when you switch to the game or close the pet.");
+        HangoutScale = B(c, "Panel", "HangoutAnnalieScale", 0.72f, "Extra size for Annalie's hangout portrait (Annalie_Outside), which is drawn bigger than her shop portrait. Lower = smaller.");
+        CharSize = B(c, "Panel", "CharacterSize", 1f, "Size of characters shown by @show (1 = default: a big bust portrait with its bottom at the screen edge).");
+        CharSpread = B(c, "Panel", "CharacterSpread", 4f, "How far left/right (in game units) @show places a character from the centre.");
+        StoryHotkey = B(c, "Panel", "StoryHotkey", "F3", "Key that opens the list of your custom stories (press it again to stop a story).");
+        SettingsHotkey = B(c, "Panel", "SettingsHotkey", Mod.DefaultSettingsKey, "Key that opens this mod's settings page in your browser.");
+        ZoomHotkey = B(c, "Panel", "ZoomHotkey", "F4", "Key that toggles the zoom by hand.");
+        BubbleSeconds = B(c, "Panel", "BubbleSeconds", 25, "How long a reply stays on screen after she finishes talking. 0 = until you chat again.");
+        SpeakSpeed = B(c, "Panel", "SpeakSpeed", 30f, "Mouth speed in letters per second (higher = faster mouth).");
+        Port = B(c, "Panel", "Port", Mod.DefaultPort, "Open http://127.0.0.1:<Port> in your browser (" + Mod.Name + "). Story Creator and Jun Link need different ports.");
         // the section is still called "Ollama" so existing config files keep their values; it is the AI server section now
-        ApiType = c.Bind("Ollama", "Api", "openai", "openai = the OpenAI-style chat API (KoboldCpp, llama.cpp llama-server, LM Studio and Ollama all have it). ollama = Ollama's own API (only needed for the Think switch).");
-        OllamaUrl = c.Bind("Ollama", "Url", "http://127.0.0.1:5001", "Address of your local AI server. KoboldCpp: http://127.0.0.1:5001, llama-server: http://127.0.0.1:8080, LM Studio: http://127.0.0.1:1234, Ollama: http://127.0.0.1:11434.");
-        Model = c.Bind("Ollama", "Model", "", "Model name. KoboldCpp and llama-server can leave it empty (they use the model they loaded); Ollama and LM Studio need the exact name ('ollama list').");
-        MaxTokens = c.Bind("Ollama", "MaxTokens", 300, "Max length of each reply.");
-        Think = c.Bind("Ollama", "Think", false, "Only with Api = ollama: false = skip the hidden thinking of reasoning models (faster, and replies are not cut off). With the openai API, turn thinking off in your server instead.");
-        Temperature = c.Bind("Ollama", "Temperature", 0.8f, "Higher = more varied replies.");
-        ReqPrologue = c.Bind("Requirements", "Prologue", true, "true = the AI features (chat, greeting, diary, stories) wait until the save is past the prologue.");
-        ReqAdvancedAI = c.Bind("Requirements", "AdvancedAI", true, "true = wait until the game's Advanced AI setup has finished (story stage 3, the scene where she tells you the setup is done). Before that she runs the emergency AI and can't really talk.");
-        ReqLimbs = c.Bind("Requirements", "AllBodyParts", true, "true = wait until she has all her body parts (both arms and both legs).");
-        GreetOnLoad = c.Bind("Chat", "GreetOnLoad", true, "true = when a save finishes loading, Jun greets you once using the game's normal dialogue box (not the speech bubble).");
-        UseCharacters = c.Bind("Memory", "UseCharacters", true, "true = give Jun short personality notes about the game characters (jun_characters.txt, editable). A character is added when you mention them.");
-        StoryContext = c.Bind("Chat", "StoryContext", true, "true = tell the model which story events/flags the save has already reached, so Jun knows what happened between you.");
-        RememberStory = c.Bind("Memory", "RememberStory", true, "true = write down every line of story/dialogue you see in the game (plus your chats with Jun) to " + Host.RootLabel + "\\jun_memory.txt and let Jun remember it.");
-        RecallLines = c.Bind("Memory", "RecallLines", 12, "How many older remembered lines that match your message are added, so she can recall old events when you ask.");
-        MemoryLines = c.Bind("Memory", "MemoryLines", 60, "How many of the latest remembered lines are sent to the model each time.");
-        HistoryMessages = c.Bind("Chat", "HistoryMessages", 12, "How many past messages are sent each time.");
-        DiaryEnabled = c.Bind("Diary", "Enabled", true, "true = when the in-game day moves on, Jun writes a short diary entry about the day that ended (from jun_memory.txt). Read it at http://127.0.0.1:8765/diary. Needs Memory/RememberStory = true to have anything to write about.");
-        DiaryWords = c.Bind("Diary", "Words", 120, "About how long each entry is, in words.");
-        DiaryNotes = c.Bind("Diary", "NotesPerDay", 80, "At most this many remembered lines of the day are given to the model (the latest ones).");
-        DiaryPrompt = c.Bind("Diary", "Prompt",
+        ApiType = B(c, "Ollama", "Api", "openai", "openai = the OpenAI-style chat API (KoboldCpp, llama.cpp llama-server, LM Studio and Ollama all have it). ollama = Ollama's own API (only needed for the Think switch).");
+        OllamaUrl = B(c, "Ollama", "Url", "http://127.0.0.1:5001", "Address of your local AI server. KoboldCpp: http://127.0.0.1:5001, llama-server: http://127.0.0.1:8080, LM Studio: http://127.0.0.1:1234, Ollama: http://127.0.0.1:11434.");
+        Model = B(c, "Ollama", "Model", "", "Model name. KoboldCpp and llama-server can leave it empty (they use the model they loaded); Ollama and LM Studio need the exact name ('ollama list').");
+        MaxTokens = B(c, "Ollama", "MaxTokens", 300, "Max length of each reply.");
+        Think = B(c, "Ollama", "Think", false, "Only with Api = ollama: false = skip the hidden thinking of reasoning models (faster, and replies are not cut off). With the openai API, turn thinking off in your server instead.");
+        Temperature = B(c, "Ollama", "Temperature", 0.8f, "Higher = more varied replies.");
+        ReqPrologue = B(c, "Requirements", "Prologue", true, "true = the AI features (chat, greeting, diary, stories) wait until the save is past the prologue.");
+        ReqAdvancedAI = B(c, "Requirements", "AdvancedAI", true, "true = wait until the game's Advanced AI setup has finished (story stage 3, the scene where she tells you the setup is done). Before that she runs the emergency AI and can't really talk.");
+        ReqLimbs = B(c, "Requirements", "AllBodyParts", true, "true = wait until she has all her body parts (both arms and both legs).");
+        GreetOnLoad = B(c, "Chat", "GreetOnLoad", true, "true = when a save finishes loading, Jun greets you once using the game's normal dialogue box (not the speech bubble).");
+        UseCharacters = B(c, "Memory", "UseCharacters", true, "true = give Jun short personality notes about the game characters (jun_characters.txt, editable). A character is added when you mention them.");
+        StoryContext = B(c, "Chat", "StoryContext", true, "true = tell the model which story events/flags the save has already reached, so Jun knows what happened between you.");
+        RememberStory = B(c, "Memory", "RememberStory", true, "true = write down every line of story/dialogue you see in the game (plus your chats with Jun) to " + Host.RootLabel + "\\jun_memory.txt and let Jun remember it.");
+        RecallLines = B(c, "Memory", "RecallLines", 12, "How many older remembered lines that match your message are added, so she can recall old events when you ask.");
+        MemoryLines = B(c, "Memory", "MemoryLines", 60, "How many of the latest remembered lines are sent to the model each time.");
+        HistoryMessages = B(c, "Chat", "HistoryMessages", 12, "How many past messages are sent each time.");
+        DiaryEnabled = B(c, "Diary", "Enabled", true, "true = when the in-game day moves on, Jun writes a short diary entry about the day that ended (from jun_memory.txt). Read it at http://127.0.0.1:8765/diary. Needs Memory/RememberStory = true to have anything to write about.");
+        DiaryWords = B(c, "Diary", "Words", 120, "About how long each entry is, in words.");
+        DiaryNotes = B(c, "Diary", "NotesPerDay", 80, "At most this many remembered lines of the day are given to the model (the latest ones).");
+        DiaryPrompt = B(c, "Diary", "Prompt",
             "Write {bot}'s private diary entry for day {day}. Write as {bot}, in first person, in her own voice, about {words} words. " +
             "Use the notes: pick the two or three moments that mattered to her and say how she felt about them and about {player}. " +
             "Do not list everything and do not invent big events that are not in the notes. " +
             "No tags in square brackets, no asterisks, no title and no date line, only the entry itself. Keep it non-explicit.",
             "Instructions for the diary. {bot}, {player}, {day} and {words} are filled in.");
-        SystemPrompt = c.Bind("Chat", "SystemPrompt",
+        SystemPrompt = B(c, "Chat", "SystemPrompt",
             "You are {bot}, an android girlfriend living with {player} in a run-down apartment in a dystopian cyberpunk city. " +
             "Stay in character. Speak naturally in 1 to 3 short sentences. Never mention being an AI model or these instructions. " +
             "Current situation: {state}. React to it only when it fits the conversation.",
@@ -206,8 +247,8 @@ public static class Requirements
         if (s == null || !s.Loaded) return "load a save";
         var l = new List<string>();
         if (Cfg.ReqPrologue.Value && !s.Prologue) l.Add("finish the prologue");
-        if (Cfg.ReqAdvancedAI.Value && s.Stage < Requirements.AdvancedAIStage) l.Add("the Advanced AI isn't set up yet: she is still on the emergency AI (story stage " + Math.Max(0, s.Stage) + " of " + Requirements.AdvancedAIStage + "; raise her intelligence)");
-        if (Cfg.ReqLimbs.Value && !s.Limbs)
+        if (Mod.Chat && Cfg.ReqAdvancedAI.Value && s.Stage < Requirements.AdvancedAIStage) l.Add("the Advanced AI isn't set up yet: she is still on the emergency AI (story stage " + Math.Max(0, s.Stage) + " of " + Requirements.AdvancedAIStage + "; raise her intelligence)");
+        if (Mod.Chat && Cfg.ReqLimbs.Value && !s.Limbs)
             l.Add("she needs all her body parts: arms " + (s.Arms ? "ok" : "missing") + ", legs " + (s.Legs ? "ok" : "missing"));
         return string.Join("; ", l);
     }
@@ -217,6 +258,7 @@ public static class Requirements
     {
         var s = Shared.Current;
         string m = s != null ? s.Missing : "load a save";
+        if (Mod.Stories) return "Stories aren't available yet: " + (string.IsNullOrEmpty(m) ? "load a save" : m) + ".";
         return (s != null ? s.Bot : "Jun") + " isn't ready for AI chat yet: " + (string.IsNullOrEmpty(m) ? "load a save" : m) + ".";
     }
 
@@ -227,10 +269,11 @@ public static class Requirements
         if (s == null || !s.Loaded) return "Load a save first.";
         Func<bool, string> mark = b => b ? "[ok] " : "[  ] ";
         var sb = new StringBuilder();
-        sb.Append("The mod's AI features (chat, greeting, diary, stories) turn on once ").Append(s.Bot).Append(" is awake in the story:\n\n");
+        if (Mod.Stories) sb.Append("Stories can be played once the save is past the prologue:\n\n");
+        else sb.Append("Jun Link's AI features (chat, greeting, diary) turn on once ").Append(s.Bot).Append(" is awake in the story:\n\n");
         if (Cfg.ReqPrologue.Value) sb.Append(mark(s.Prologue)).Append("Prologue finished\n");
-        if (Cfg.ReqAdvancedAI.Value) sb.Append(mark(s.Stage >= AdvancedAIStage)).Append("Advanced AI unlocked (story stage ").Append(Math.Max(0, s.Stage)).Append(" of ").Append(AdvancedAIStage).Append(", intelligence ").Append(s.Intel).Append(")\n");
-        if (Cfg.ReqLimbs.Value) sb.Append(mark(s.Limbs)).Append("All body parts: arms ").Append(s.Arms ? "ok" : "missing").Append(", legs ").Append(s.Legs ? "ok" : "missing").Append("\n");
+        if (Mod.Chat && Cfg.ReqAdvancedAI.Value) sb.Append(mark(s.Stage >= AdvancedAIStage)).Append("Advanced AI unlocked (story stage ").Append(Math.Max(0, s.Stage)).Append(" of ").Append(AdvancedAIStage).Append(", intelligence ").Append(s.Intel).Append(")\n");
+        if (Mod.Chat && Cfg.ReqLimbs.Value) sb.Append(mark(s.Limbs)).Append("All body parts: arms ").Append(s.Arms ? "ok" : "missing").Append(", legs ").Append(s.Legs ? "ok" : "missing").Append("\n");
         sb.Append("\nKeep playing; this unlocks by itself.");
         return sb.ToString();
     }
@@ -399,7 +442,7 @@ public static class GameLink
                     case "satiation": { float f = Clamp01(c.Value); gv.Satiation = f; break; }
                     case "mood": { float f = Clamp01(c.Value); gv.Mood = f; break; }
 #endif
-                    case "openchat": InGameChat.OpenRequested = true; break;
+                    case "openchat": if (Mod.Chat) InGameChat.OpenRequested = true; break;
                     case "zoom": InGameChat.ZoomRequested = true; break;
                     default: Shared.LastResult = "Unknown action: " + c.Action; continue;
                 }
@@ -754,21 +797,28 @@ public static class InGameChat
             try { Application.OpenURL("http://127.0.0.1:" + PanelServer.RunningPort + "/settings"); } catch (Exception ex) { Cfg.Log.LogWarning("Settings: could not open the browser: " + ex.Message); }
         }
         TrackZoomState();
-        if (ZoomRequested) { ZoomRequested = false; ToggleZoom(); }
-        if (OpenRequested) { OpenRequested = false; if (!Requirements.Ready) ShowNotReady(); else { if (Cfg.AutoZoom.Value) ZoomIn(); OpenInput(); } }
-        string r = PendingReply;
-        if (r != null) { PendingReply = null; ShowReply(r); }
-        try { StoryMemory.Tick(bubbleText); } catch { }
-        try { Diary.Tick(); } catch { }
-        TickGreet();
-        TickGreetClose();
-        StoryTick();
-        TickSpeech();
-        TickFade();
-        TickKeep();
-        TickTrace();
-        TickBg();
-        AssetDump.Tick();
+        if (Mod.Chat)
+        {
+            if (ZoomRequested) { ZoomRequested = false; ToggleZoom(); }
+            if (OpenRequested) { OpenRequested = false; if (!Requirements.Ready) ShowNotReady(); else { if (Cfg.AutoZoom.Value) ZoomIn(); OpenInput(); } }
+            string r = PendingReply;
+            if (r != null) { PendingReply = null; ShowReply(r); }
+            try { StoryMemory.Tick(bubbleText); } catch { }
+            try { Diary.Tick(); } catch { }
+            try { PetView.Tick(); } catch { }
+            TickGreet();
+            TickGreetClose();
+            TickSpeech();
+            TickFade();
+            TickKeep();
+            TickTrace();
+        }
+        if (Mod.Stories)
+        {
+            StoryTick();
+            TickBg();
+            AssetDump.Tick();
+        }
     }
 
     // ---------- custom stories ----------
@@ -813,7 +863,6 @@ public static class InGameChat
     static void StoryTick()
     {
         try { StoryMusic.Tick(); } catch { }
-        try { PetView.Tick(); } catch { }
         try
         {
             if (StoryMenuNextPage) { StoryMenuNextPage = false; if (!storyRunning) ShowStoryMenu(true); }
@@ -2280,7 +2329,7 @@ public static class InGameChat
             if (ui == null) return;
             var choices = new Il2CppSystem.Collections.Generic.List<PopupChoice>();
             choices.Add(new PopupChoice("OK"));
-            ui.Popup(Shared.Current.Bot + " isn't ready yet", Requirements.Checklist(), choices);
+            ui.Popup(Mod.Stories ? "Stories aren't available yet" : Shared.Current.Bot + " isn't ready yet", Requirements.Checklist(), choices);
         }
         catch (Exception ex) { Cfg.Log.LogWarning("Not-ready popup failed: " + ex.Message); }
     }
@@ -3721,6 +3770,53 @@ public static class ChatLog
 }
 
 // Plain .NET only from here down. Never touches Unity or game objects.
+// Which web pages belong to which mod, and the small text changes each mod makes to the shared pages.
+public static class Routes
+{
+    static readonly string[] common = { "/common.js", "/logo", "/icon", "/favicon.ico", "/fonts.css", "/gameui.css", "/gameui.js", "/settings", "/api/settings", "/api/settings/set", "/api/state" };
+    static readonly string[] story = { "/stories", "/stage", "/packs", "/api/backgrounds", "/api/music", "/api/music/play", "/api/stories", "/api/story", "/api/story/check", "/api/story/delete", "/api/story/play", "/api/story/save" };
+    static readonly string[] chat = { "/", "/diary", "/pet", "/pet/frame.png", "/api/chat", "/api/clear", "/api/cmd", "/api/history", "/api/diary", "/api/diary/write", "/api/pet/info", "/api/pet/react" };
+
+    public static bool Allowed(string path)
+    {
+        if (Array.IndexOf(common, path) >= 0 || path.StartsWith("/fonts/")) return true;
+        if (Mod.Stories) return Array.IndexOf(story, path) >= 0 || path.StartsWith("/api/packs") || path.StartsWith("/api/stage/") || path == "/";
+        return Array.IndexOf(chat, path) >= 0;
+    }
+
+    public static string Elsewhere(string path)
+    {
+        return "<!doctype html><meta charset='utf-8'><title>" + Mod.Name + "</title><body style='font:16px system-ui;background:#16121c;color:#eee;padding:24px'>" +
+               "<h2>This page is part of " + Mod.OtherName + "</h2><p>" + Mod.Name + " doesn't have <code>" + System.Net.WebUtility.HtmlEncode(path) + "</code>. " +
+               Mod.OtherName + " (" + Mod.OtherWhat + ") is a separate mod. If you have it installed, open " +
+               "<a style='color:#ff5a8a' href='http://127.0.0.1:" + Mod.OtherPort + path + "'>http://127.0.0.1:" + Mod.OtherPort + path + "</a>.</p>" +
+               "<p><a style='color:#ff5a8a' href='/'>back to " + Mod.Name + "</a></p></body>";
+    }
+
+    public static string Page(string file) { return Fix(file, PanelServer.Embedded(file)); }
+
+    public static string Fix(string file, string t)
+    {
+        if (t == null) return "";
+        if (Mod.Stories)
+        {
+            t = t.Replace("<a href='/'>&larr; back to the panel</a>", "<a href='/packs'>story packs</a> &middot; <a href='/settings'>settings</a>")
+                 .Replace("<a href=\"/stories\">story editor</a> <a href=\"/\">panel</a>", "<a href=\"/stories\">story editor</a> <a href=\"/settings\">settings</a>")
+                 .Replace("<a href=\"/\">panel</a>", "<a href=\"/stories\">story editor</a>")
+                 .Replace("Jun Link story editor", "Story Creator")
+                 .Replace("Jun Link", "Story Creator");
+        }
+        else if (file == "panel.html")
+        {
+            t = t.Replace("<div class='row'><a href='/stories' style='color:#d6336c'>Story editor &rarr; write your own storylines</a></div>",
+                          "<div class='row'><a href='http://127.0.0.1:" + Mod.OtherPort + "/stories' style='color:#d6336c'>Story Creator &rarr; custom stories (a separate mod, if you have it)</a></div>")
+                 .Replace("<div class='row'><a href='/packs' style='color:#d6336c'>Story packs &rarr; install and share stories</a></div>\n", "")
+                 .Replace("<div class='row'><a href='/packs' style='color:#d6336c'>Story packs &rarr; install and share stories</a></div>", "");
+        }
+        return t;
+    }
+}
+
 public static class PanelServer
 {
     static HttpListener listener;
@@ -3735,18 +3831,18 @@ public static class PanelServer
     {
         try
         {
-            page = LoadPage();
+            page = Routes.Fix("panel.html", LoadPage());
             listener = new HttpListener();
             listener.Prefixes.Add("http://127.0.0.1:" + Cfg.Port.Value + "/");
             listener.Start();
             RunningPort = Cfg.Port.Value;
             StoryPacks.BackgroundAvailable = n => Array.IndexOf(InGameChat.BackgroundNames, n) >= 0 || InGameChat.CustomBgExists(n);
-            Cfg.Log.LogInfo("Jun Link is running. Open http://127.0.0.1:" + Cfg.Port.Value + " in your browser.");
+            Cfg.Log.LogInfo(Mod.Name + " " + Mod.Version + " is running. Open http://127.0.0.1:" + Cfg.Port.Value + (Mod.Stories ? "/stories" : "") + " in your browser.");
             Task.Run(Loop);
         }
         catch (Exception ex)
         {
-            Cfg.Log.LogError("Jun Link could not start its web server: " + ex.Message);
+            Cfg.Log.LogError(Mod.Name + " could not start its web server: " + ex.Message + (Mod.Stories ? " (Story Creator uses port 8766 and Jun Link 8765; they must differ)" : ""));
         }
     }
 
@@ -3761,6 +3857,8 @@ public static class PanelServer
         }
         return null;
     }
+
+    public static string Embedded(string file) { return ReadEmbedded(file); }
 
     static string ReadEmbedded(string file)
     {
@@ -3823,6 +3921,8 @@ public static class PanelServer
             var req = ctx.Request;
             string path = req.Url.AbsolutePath;
             if (!HostOk(req)) { await Send(ctx, 403, "text/plain", "forbidden"); return; }
+            if (!Routes.Allowed(path)) { await Send(ctx, 404, "text/html; charset=utf-8", Routes.Elsewhere(path)); return; }
+            if (Mod.Stories && path == "/" && req.HttpMethod == "GET") { ctx.Response.Redirect("/stories"); ctx.Response.Close(); return; }
 
             if (req.HttpMethod == "GET")
             {
@@ -3841,7 +3941,7 @@ public static class PanelServer
                     ctx.Response.Close();
                     return;
                 }
-                if (path == "/common.js") { await Send(ctx, 200, "application/javascript; charset=utf-8", ReadEmbedded("common.js")); return; }
+                if (path == "/common.js") { await Send(ctx, 200, "application/javascript; charset=utf-8", Routes.Page("common.js")); return; }
                 if (path == "/icon" || path == "/favicon.ico" || path == "/logo")
                 {
                     // a logo.png in the mod's folder wins (as the tab icon only if it is roughly square, a wide one gets squashed);
@@ -3869,9 +3969,9 @@ public static class PanelServer
                     await Send(ctx, 200, "image/svg+xml", ReadEmbedded("logo.svg")); return;
                 }
                 if (path == "/gameui.js") { await Send(ctx, 200, "application/javascript; charset=utf-8", ReadEmbedded("gameui.js")); return; }
-                if (path == "/stage") { await Send(ctx, 200, "text/html; charset=utf-8", ReadEmbedded("stage.html")); return; }
+                if (path == "/stage") { await Send(ctx, 200, "text/html; charset=utf-8", Routes.Page("stage.html")); return; }
                 if (path == "/api/stage/info") { await Send(ctx, 200, "application/json", JsonSerializer.Serialize(new { active = InGameChat.StageOn, backgrounds = InGameChat.AllBackgroundNames(), spread = Cfg.CharSpread.Value })); return; }
-                if (path == "/stories") { await Send(ctx, 200, "text/html; charset=utf-8", ReadEmbedded("stories.html").Replace("{{ROOT}}", Host.RootLabel).Replace("{{LOG}}", Host.LogLabel)); return; }
+                if (path == "/stories") { await Send(ctx, 200, "text/html; charset=utf-8", Routes.Page("stories.html").Replace("{{ROOT}}", Host.RootLabel).Replace("{{LOG}}", Host.LogLabel)); return; }
                 if (path == "/api/stories")
                 {
                     var items = new List<object>();
@@ -3887,8 +3987,8 @@ public static class PanelServer
                     await Send(ctx, 200, "application/json", JsonSerializer.Serialize(new { id = sid, text = txt }));
                     return;
                 }
-                if (path == "/pet") { await Send(ctx, 200, "text/html; charset=utf-8", ReadEmbedded("pet.html")); return; }
-                if (path == "/packs") { await Send(ctx, 200, "text/html; charset=utf-8", ReadEmbedded("packs.html")); return; }
+                if (path == "/pet") { await Send(ctx, 200, "text/html; charset=utf-8", Routes.Page("pet.html")); return; }
+                if (path == "/packs") { await Send(ctx, 200, "text/html; charset=utf-8", Routes.Page("packs.html")); return; }
                 if (path == "/api/packs")
                 {
                     var own = new List<object>();
@@ -3905,9 +4005,9 @@ public static class PanelServer
                     ctx.Response.Close();
                     return;
                 }
-                if (path == "/settings") { await Send(ctx, 200, "text/html; charset=utf-8", ReadEmbedded("settings.html")); return; }
+                if (path == "/settings") { await Send(ctx, 200, "text/html; charset=utf-8", Routes.Page("settings.html")); return; }
                 if (path == "/api/settings") { await Send(ctx, 200, "application/json", SettingsPage.Json()); return; }
-                if (path == "/diary") { await Send(ctx, 200, "text/html; charset=utf-8", ReadEmbedded("diary.html")); return; }
+                if (path == "/diary") { await Send(ctx, 200, "text/html; charset=utf-8", Routes.Page("diary.html")); return; }
                 if (path == "/api/diary") { await Send(ctx, 200, "application/json", Diary.Json()); return; }
                 if (path == "/api/pet/info") { PetView.Touch(); await Send(ctx, 200, "application/json", JsonSerializer.Serialize(new { status = PetView.Status, w = PetView.W, h = PetView.H, seq = PetView.Seq })); return; }
                 if (path == "/pet/frame.png")
@@ -4117,7 +4217,8 @@ public static class PanelServer
             loaded = s.Loaded, bot = s.Bot, player = s.Player, day = s.Day, money = s.Money, tokens = s.Tokens,
             health = s.Health, stamina = s.Stamina, mental = s.Mental, satiation = s.Satiation, mood = s.Mood,
             rentDue = s.RentDue, debug = s.Debug, result = Shared.LastResult, emotes = Shared.EmoteInfo,
-            ready = s.Ready, missing = s.Missing, stage = s.Stage, intel = s.Intel, editor = PublicBuild.Editor
+            ready = s.Ready, missing = s.Missing, stage = s.Stage, intel = s.Intel, editor = PublicBuild.Editor,
+            mod = Mod.Name, otherMod = Mod.OtherName, otherPort = Mod.OtherPort
         });
     }
 

@@ -1,16 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <!-- one source, two mods:
+         dotnet build                                -> Jun Link (AI chat), JunLink.dll
+         dotnet build -p:Private=true                -> Jun Link private (+ money/stat editor), JunLink.Private.dll, never shared
+         dotnet build -p:Mod=Story                   -> Story Creator (stories, minigames, packs), StoryCreator.dll -->
     <AssemblyName>JunLink</AssemblyName>
     <AssemblyName Condition="'$(Private)'=='true'">JunLink.Private</AssemblyName>
+    <AssemblyName Condition="'$(Mod)'=='Story'">StoryCreator</AssemblyName>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <RootNamespace>MdrgPanel</RootNamespace>
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <DefineConstants>$(DefineConstants);MELON</DefineConstants>
-    <!-- dotnet build                      -> the public build (no money/stat editor)
-         dotnet build -p:Private=true     -> your private build (keeps the editor), a separate DLL name -->
     <DefineConstants Condition="'$(Private)'=='true'">$(DefineConstants);PRIVATE_BUILD</DefineConstants>
+    <DefineConstants Condition="'$(Mod)'=='Story'">$(DefineConstants);STORY_MOD</DefineConstants>
   </PropertyGroup>
 
   <!-- Your game folder (the one with MelonLoader\ and Mods\ inside) goes in Local.props at the repo root:

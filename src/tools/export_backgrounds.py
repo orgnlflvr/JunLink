@@ -5,8 +5,8 @@ Runs only on your PC. Nothing is uploaded. Keep the pictures private (they are t
 
 Setup (once):   pip install UnityPy
 Run it from the game folder (where the game .exe is), with Jun Link installed:
-  python "UserData\\JunLink\\tools\\export_backgrounds.py"
-It finds <GameName>_Data and saves into UserData\\JunLink\\jun_backgrounds by itself.
+  python "UserData\\StoryCreator\\tools\\export_backgrounds.py"
+It finds <GameName>_Data and saves into UserData\\StoryCreator\\jun_backgrounds by itself.
 Or name the game folder:  python export_backgrounds.py "C:\\path\\to\\game"
 Or say everything:        python export_backgrounds.py --data "<game>\\<GameName>_Data" --out "<jun_backgrounds folder>"
 (resources.assets AND resources.assets.resS must both be in the _Data folder.)
@@ -34,14 +34,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("game", nargs="?", help="the game folder (where the game .exe is). Optional when run from inside it")
     ap.add_argument("--data", help="the <GameName>_Data folder (found by itself if left out)")
-    ap.add_argument("--out", help="the jun_backgrounds folder (default: UserData\\JunLink\\jun_backgrounds in the game folder)")
+    ap.add_argument("--out", help="the jun_backgrounds folder (default: UserData\\StoryCreator\\jun_backgrounds in the game folder)")
     ap.add_argument("--names", default=",".join(DEFAULT), help="comma list of picture names (default: %s)" % ",".join(DEFAULT))
     ap.add_argument("--list", action="store_true", help="print the names of every big picture and stop")
     a = ap.parse_args()
     here = os.path.dirname(os.path.abspath(__file__))
     game = a.game
     if not game:
-        # <game>\UserData\JunLink\tools\export_backgrounds.py -> <game>; else the current folder
+        # <game>\UserData\StoryCreator\tools\export_backgrounds.py -> <game>; else the current folder
         up = os.path.abspath(os.path.join(here, "..", "..", ".."))
         game = up if os.path.basename(os.path.dirname(os.path.dirname(here))).lower() == "userdata" else os.getcwd()
     if not a.data:
@@ -51,9 +51,9 @@ def main():
         a.data = cands[0]
     if not a.out and not a.list:
         if os.path.basename(here).lower() == "tools" and os.path.isdir(os.path.dirname(here)):
-            a.out = os.path.join(os.path.dirname(here), "jun_backgrounds")          # next to this tools folder: UserData\JunLink
+            a.out = os.path.join(os.path.dirname(here), "jun_backgrounds")          # next to this tools folder: UserData\StoryCreator
         else:
-            a.out = os.path.join(game, "UserData", "JunLink", "jun_backgrounds")
+            a.out = os.path.join(game, "UserData", "StoryCreator", "jun_backgrounds")
         print("saving into", a.out)
     import UnityPy
     src = os.path.join(a.data, "resources.assets")
