@@ -110,20 +110,25 @@ public class ModEntry : MelonMod
         try
         {
             string newDir = Path.Combine(user, ModFolder);
-            if (Directory.Exists(newDir)) return;
 #if STORY_MOD
+            // runs once (marker file), even if the release zip's UserData\StoryCreator folder was copied in first; never overwrites
+            string marker = Path.Combine(newDir, ".copied_old_stories");
+            if (File.Exists(marker)) return;
             foreach (var old in new[] { "JunLink", "MdrgPanel" })
             {
                 string o = Path.Combine(user, old);
-                if (!Directory.Exists(o)) continue;
+                if (!Directory.Exists(Path.Combine(o, "jun_stories"))) continue;
                 CopyDir(Path.Combine(o, "jun_stories"), Path.Combine(newDir, "jun_stories"));
                 CopyDir(Path.Combine(o, "jun_backgrounds"), Path.Combine(newDir, "jun_backgrounds"));
                 CopyDir(Path.Combine(o, "tools"), Path.Combine(newDir, "tools"));
-                if (File.Exists(Path.Combine(o, "logo.png"))) File.Copy(Path.Combine(o, "logo.png"), Path.Combine(newDir, "logo.png"), false);
+                if (File.Exists(Path.Combine(o, "logo.png")) && !File.Exists(Path.Combine(newDir, "logo.png"))) File.Copy(Path.Combine(o, "logo.png"), Path.Combine(newDir, "logo.png"), false);
                 MelonLogger.Msg("Story Creator: copied your stories and backgrounds from UserData\\" + old + " (the old folder is kept as it is).");
                 break;
             }
+            Directory.CreateDirectory(newDir);
+            File.WriteAllText(marker, "Story Creator copied the stories from the older all-in-one mod once. Delete this file to copy again (nothing is overwritten).");
 #else
+            if (Directory.Exists(newDir)) return;
             string oldDir = Path.Combine(user, "MdrgPanel");
             if (Directory.Exists(oldDir))
             {

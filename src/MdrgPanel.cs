@@ -128,6 +128,19 @@ public static class Mod
     }
 }
 
+// The two mods share one game and one dialogue box. Story Creator raises this flag while a story or the stage runs,
+// so Jun Link can keep its greeting and replies out of the way (before the split this was one variable; log 2026-10-22:
+// Jun Link's greeting landed in the middle of a Story Creator story and the two took turns on the text box).
+public static class CrossMod
+{
+    const string StoryKey = "MDRG.StoryCreator.StoryRunning";
+    public static void SetStoryRunning(bool on) { try { AppDomain.CurrentDomain.SetData(StoryKey, on ? "1" : null); } catch { } }
+    public static bool OtherStoryRunning
+    {
+        get { if (Mod.Stories) return false; try { return AppDomain.CurrentDomain.GetData(StoryKey) as string == "1"; } catch { return false; } }
+    }
+}
+
 public static class Cfg
 {
     public static HostLog Log;
@@ -806,13 +819,17 @@ public static class InGameChat
             try { StoryMemory.Tick(bubbleText); } catch { }
             try { Diary.Tick(); } catch { }
             try { PetView.Tick(); } catch { }
+            YieldToOtherStory();
             TickGreet();
             TickGreetClose();
-            TickSpeech();
-            TickFade();
             TickKeep();
             TickTrace();
         }
+        // shared mechanics: the fade-out of the text box (stories ask for it at scene ends and when they finish) and the mouth
+        // animation. Both do nothing unless something asked for them. (Split bug 2026-10-22: Story Creator never ran TickFade,
+        // so the last story line stayed frozen on screen.)
+        TickSpeech();
+        TickFade();
         if (Mod.Stories)
         {
             StoryTick();
@@ -944,6 +961,18 @@ public static class InGameChat
         storyScene = sc; storyIdx = 0;
     }
 
+    static bool StoryBusy { get { return storyRunning || CrossMod.OtherStoryRunning; } }
+
+    // Jun Link: Story Creator just started a story while the greeting is up -> end the greeting properly, as StartStory used to
+    static void YieldToOtherStory()
+    {
+        if (!Mod.Chat || !greetActive || !CrossMod.OtherStoryRunning) return;
+        greetActive = false; greetClosed = false; greetPlain = false;
+        try { if (greetDialog != null) greetDialog.Stop(); } catch { }
+        try { if (greetDialog != null) WriterFree(greetDialog); } catch { }
+        Cfg.Log.LogInfo("Greeting: stopped, Story Creator started a story");
+    }
+
     static void StartStory(string id)
     {
         if (!Requirements.Ready) { Shared.LastResult = Requirements.Why(); Cfg.Log.LogInfo("Story not started: " + Requirements.Why()); ShowNotReady(); return; }
@@ -970,7 +999,7 @@ public static class InGameChat
         try { var d0 = SayDialog.ActiveSayDialog; if (d0 != null) { lastDialog = d0; } } catch { }
         FadeOldBubble();
         story = st; storyScene = st.Scenes[st.Start]; storyIdx = 0;
-        storyRunning = true; storyWaitLine = false; storyWaitChoice = false; storyLineDone = false; storyChoice = -1;
+        storyRunning = true; storyWaitLine = false; storyWaitChoice = false; storyLineDone = false; storyChoice = -1; CrossMod.SetStoryRunning(true);
         storyZoomedByUs = false;
         CaptureJun();
         if (Cfg.AutoZoom.Value && !zoomed) { ZoomIn(); storyZoomedByUs = zoomed; }
@@ -1017,7 +1046,7 @@ public static class InGameChat
         var st = new StoryData(); st.Id = "stage"; st.Title = "Stage"; st.Start = "stage";
         var scn = new StoryScene(); scn.Name = "stage"; st.Scenes["stage"] = scn;
         story = st; storyScene = scn; storyIdx = 0;
-        storyRunning = true; storyWaitLine = false; storyWaitChoice = false; storyLineDone = false; storyChoice = -1;
+        storyRunning = true; storyWaitLine = false; storyWaitChoice = false; storyLineDone = false; storyChoice = -1; CrossMod.SetStoryRunning(true);
         storyZoomedByUs = false;
         string junk; while (StageCmds.TryDequeue(out junk)) { }
         CaptureJun();
@@ -1034,7 +1063,7 @@ public static class InGameChat
         if (mgWaiting) { mgWaiting = false; try { if (mgObj != null) UnityEngine.Object.Destroy(mgObj); } catch { } mgObj = null; }
         try { StoryMusic.Reset(); } catch { }
         stageMode = false; stageBoxShown = false;
-        storyRunning = false; storyWaitLine = false; storyWaitChoice = false; storyChoice = -1;
+        storyRunning = false; storyWaitLine = false; storyWaitChoice = false; storyChoice = -1; CrossMod.SetStoryRunning(false);
         if (was)
         {
             try { if (storyDialog != null) lastDialog = storyDialog; FadeOldBubble(); } catch { try { HideDialogCleanly(); } catch { } }   // fade out like the game does
@@ -2419,7 +2448,7 @@ public static class InGameChat
             IntPtr gvPtr = gv.Pointer;
             if (gvPtr == greetedGv) return;
             if (Controller() == null) { greetReadyAt = -1f; GreetWhy("waiting: she is not on screen yet (no bot controller)"); return; }
-            if (storyRunning) { greetedGv = gvPtr; GreetWhy("skipped: a story is playing (no greeting for this save)"); return; }    // the log showed the greeting firing in the middle of a story
+            if (StoryBusy) { greetedGv = gvPtr; GreetWhy("skipped: a story is playing (no greeting for this save)"); return; }    // the log showed the greeting firing in the middle of a story
             if (greetReadyAt < 0f) { greetReadyAt = Time.unscaledTime; GreetWhy("save is loaded, she is on screen; waiting 5 s"); return; }
             if (Time.unscaledTime - greetReadyAt < 5f) return;           // let the game finish loading and fading in
             if (!Shared.Current.Loaded) { GreetWhy("waiting: game state not read yet"); return; }
@@ -2648,7 +2677,7 @@ public static class InGameChat
 
     static void OpenInput()
     {
-        if (storyRunning) { Shared.LastResult = "A story is playing. Press " + Cfg.StoryHotkey.Value + " to stop it first."; return; }
+        if (StoryBusy) { Shared.LastResult = "A story is playing. Stop it first (" + (Mod.Chat ? "Story Creator's story key, F3" : Cfg.StoryHotkey.Value) + ")."; return; }
         if (InputIsOpen()) { CloseInput(); return; } // F2 again closes the window instead of stacking another one
         FadeOldBubble(); // the old message fades so it never sits behind the input window
         var ui = UiOverlay.Instance;
@@ -2812,7 +2841,7 @@ public static class InGameChat
     static void ShowReply(string reply)
     {
         CloseWaiting();
-        if (greetPlain && storyRunning)      // the greeting was asked for just before a story started; its answer arrived in the middle of the story (log, v5.17b)
+        if (greetPlain && StoryBusy)      // the greeting was asked for just before a story started; its answer arrived in the middle of the story (log, v5.17b)
         {
             greetPlain = false;
             Cfg.Log.LogInfo("Greeting: dropped, a story started while she was thinking of it");

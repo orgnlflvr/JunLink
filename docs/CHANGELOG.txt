@@ -480,3 +480,13 @@ On Ikari's advice ("separate concerns into different mods"), one source now buil
   (the other mod's pages say where to find them), reacts only to its own keys, and registers its own component type
   (StoryCreatorBehaviour / PanelBehaviour) and settings prefix (StoryCreator_ / MdrgPanel_), so both run side by side.
 - Panel links to stories now point to Story Creator on port 8766; story pages link to packs/settings instead of the panel.
+
+Split fixes after the first side-by-side test (untested in game)
+- Jun Link's load greeting landed in the middle of a Story Creator story (both mods then took turns on the dialogue box).
+  Story Creator now raises a shared "story is playing" flag (AppDomain data) while a story or the stage runs; Jun Link
+  skips the greeting, drops a greeting reply that arrives mid-story, closes a greeting that is still up when a story starts,
+  and F2 says a story is playing.
+- Story Creator's first-start copy of your old stories ran only if UserData\StoryCreator did not exist yet, so copying the
+  release zip's UserData folder first skipped it. It now runs once by a marker file (.copied_old_stories) and never overwrites.
+- Story Creator: the text box stayed frozen on the last line after a story ended. The box fade-out (TickFade) and mouth
+  animation (TickSpeech) were only run by Jun Link after the split; both mods run them now (they are idle unless asked).
