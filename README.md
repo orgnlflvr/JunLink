@@ -41,6 +41,10 @@ The moments it writes are listed in `UserData\JunLink\personality_triggers.txt`,
 > [!NOTE]
 > **Adult moments are optional**: a checkbox on the diary page, off by default, 18+, consensual scenes only. Non-consent triggers are never written and keep the game's own lines. The lines are written on your PC by your own AI and stay there; nothing explicit is part of this mod or this repo.
 
+### Desktop pet (optional)
+
+**Jun Link Pet** is a small Windows app that shows Jun on your desktop, drawn live by the game: drag her around, click her, talk to her. It needs the game running with Jun Link and your save loaded. Download `JunLinkPet_1.0.0.zip` from [Releases](../../releases), unzip `JunLinkPet.exe` anywhere and run it. Windows may say "Windows protected your PC" because the exe isn't signed: **More info > Run anyway**. Source and build script: [`pet/`](pet).
+
 ### Jun has to be awake first
 
 Jun Link switches on only when Jun is awake in **your** save:

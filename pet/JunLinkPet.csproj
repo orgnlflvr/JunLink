@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AssemblyName>JunLinkPet</AssemblyName>
+    <Version>1.0.0</Version>
+    <Product>Jun Link Pet</Product>
+    <Company>Original Flavour</Company>
+    <Authors>Original Flavour</Authors>
+    <Copyright>Original Flavour (github.com/orgnlflvr)</Copyright>
+    <ApplicationIcon>pet.ico</ApplicationIcon>
+    <RootNamespace>JunLinkPet</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <DebugType>none</DebugType>
+    <!-- "dotnet publish -c Release" makes ONE exe that needs nothing installed (see build_pet.bat) -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="pet.ico" LogicalName="pet.ico" />
+    <EmbeddedResource Include="fonts\Montserrat-SemiBold.ttf" LogicalName="Montserrat-SemiBold.ttf" />
+    <EmbeddedResource Include="fonts\Montserrat-ExtraBold.ttf" LogicalName="Montserrat-ExtraBold.ttf" />
+  </ItemGroup>
+</Project>

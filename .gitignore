@@ -2,6 +2,7 @@
 bin/
 obj/
 out/
+publish/
 *.user
 .vs/
 .vscode/
@@ -24,3 +25,4 @@ made_packs/
 
 # python cache
 __pycache__/
+*.zip
