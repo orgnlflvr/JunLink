@@ -492,7 +492,7 @@ Split fixes after the first side-by-side test (untested in game)
   animation (TickSpeech) were only run by Jun Link after the split; both mods run them now (they are idle unless asked).
 
 === Jun Link 1.2.0 ===
-Thanks to Vernier for the idea and to Ikari for mining the personality trigger list.
+Thanks to the MDRG modding community for the idea and the trigger list.
 - NEW: Jun's own brain state in her replies (Chat > BrainState, on by default). Read from the game each moment:
   how she feels about you (the game's own sympathy tiers, Detest ... SuperLove), how much she misses you (longing; the game
   calls it very high above 9.5) and her desire (horniness against its current maximum). Given to the model as words, not numbers.

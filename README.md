@@ -36,7 +36,7 @@ Chat with Jun in **!Ω Factorial Omega: My Dystopian Robot Girlfriend** by Incon
 
 ### Personality moments
 
-The moments it writes are listed in `UserData\JunLink\personality_triggers.txt`, one per line: `TriggerName | what happens`. Add any trigger from the game's personality trigger list (thanks to Ikari for mining it, and to Vernier for the idea).
+The moments it writes are listed in `UserData\JunLink\personality_triggers.txt`, one per line: `TriggerName | what happens`. Add any trigger from the game's personality trigger list. Thanks to the MDRG modding community for the idea and the trigger list.
 
 > [!NOTE]
 > **Adult moments are optional**: a checkbox on the diary page, off by default, 18+, consensual scenes only. Non-consent triggers are never written and keep the game's own lines. The lines are written on your PC by your own AI and stay there; nothing explicit is part of this mod or this repo.
