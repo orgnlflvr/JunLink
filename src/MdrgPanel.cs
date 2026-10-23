@@ -106,12 +106,12 @@ public class PanelBehaviour : MonoBehaviour
 public static class Mod
 {
 #if STORY_MOD
-    public const string Name = "Story Creator", Folder = "StoryCreator", Version = "1.0.0";
+    public const string Name = "Story Creator", Folder = "StoryCreator", Version = "1.0.1", Repo = "orgnlflvr/StoryCreator";
     public const bool Stories = true, Chat = false;
     public const int DefaultPort = 8766; public const string DefaultSettingsKey = "F9";
     public const string OtherName = "Jun Link", OtherWhat = "AI chat with Jun"; public const int OtherPort = 8765;
 #else
-    public const string Name = "Jun Link", Folder = "JunLink", Version = "1.1.0";
+    public const string Name = "Jun Link", Folder = "JunLink", Version = "1.2.0", Repo = "orgnlflvr/JunLink";
     public const bool Stories = false, Chat = true;
     public const int DefaultPort = 8765; public const string DefaultSettingsKey = "F8";
     public const string OtherName = "Story Creator", OtherWhat = "custom stories and minigames"; public const int OtherPort = 8766;
@@ -119,8 +119,8 @@ public static class Mod
     // settings each mod keeps; the rest still exist in memory with their defaults (the shared code reads them) but are not saved or shown
     static readonly HashSet<string> storyKeys = new HashSet<string> {
         "Panel.BackgroundFadeSeconds", "Panel.StoryInLog", "Panel.NativeChoices", "Panel.StoryMusic", "Panel.HangoutAnnalieScale",
-        "Panel.CharacterSize", "Panel.CharacterSpread", "Panel.StoryHotkey", "Panel.SettingsHotkey", "Panel.Port", "Requirements.Prologue", "Panel.AutoZoom" };
-    static readonly HashSet<string> sharedKeys = new HashSet<string> { "Panel.SettingsHotkey", "Panel.Port", "Requirements.Prologue", "Panel.AutoZoom" };
+        "Panel.CharacterSize", "Panel.CharacterSpread", "Panel.StoryHotkey", "Panel.SettingsHotkey", "Panel.Port", "Requirements.Prologue", "Panel.AutoZoom", "Panel.CheckUpdates" };
+    static readonly HashSet<string> sharedKeys = new HashSet<string> { "Panel.SettingsHotkey", "Panel.Port", "Requirements.Prologue", "Panel.AutoZoom", "Panel.CheckUpdates" };
     public static bool Uses(string section, string key)
     {
         string k = section + "." + key;
@@ -150,7 +150,7 @@ public static class Cfg
     public static Setting<float> Temperature;
     public static Setting<bool> Think;
     public static Setting<string> Hotkey;
-    public static Setting<bool> ReplyInBubble, AutoZoom, KeepAlive, StoryContext, Actions, RememberStory, UseCharacters, GreetOnLoad;
+    public static Setting<bool> ReplyInBubble, AutoZoom, KeepAlive, CheckUpdates, StoryContext, BrainState, Actions, RememberStory, UseCharacters, GreetOnLoad;
     public static Setting<int> MemoryLines, RecallLines;
     public static Setting<string> ZoomHotkey, StoryHotkey, SettingsHotkey;
     public static Setting<float> CharSpread, CharSize, BackgroundFade, HangoutScale;
@@ -176,6 +176,7 @@ public static class Cfg
         Hotkey = B(c, "Panel", "Hotkey", "F2", "Key that opens the in-game chat (Unity KeyCode name, e.g. F2, Insert, Home).");
         ReplyInBubble = B(c, "Panel", "ReplyInBubble", true, "true = the bot says the reply in the game's own speech display. false (or if she is not on screen) = show it in a popup window.");
         AutoZoom = B(c, "Panel", "AutoZoom", true, "Zoom in on Jun when you chat with her or when she speaks in a story (only on the interaction screen).");
+        CheckUpdates = B(c, "Panel", "CheckUpdates", true, "true = when the game starts, ask GitHub once whether a newer version of this mod is out, and say so in the log and on the web pages. Nothing is downloaded or installed by itself. false = never ask.");
         KeepAlive = B(c, "Panel", "KeepAlive", true, "Put her message back (at most twice, and only if it was seen on screen first) if the game wipes it early. Set false if the text ever types out twice.");
         Actions = B(c, "Chat", "Actions", true, "true = Jun can change her own stats when you ask her to (feed, rest, heal, comfort), using action tags.");
         BackgroundFade = B(c, "Panel", "BackgroundFadeSeconds", 0.7f, "How long the fade takes when a story uses @background.");
@@ -208,6 +209,7 @@ public static class Cfg
         ReqLimbs = B(c, "Requirements", "AllBodyParts", true, "true = wait until she has all her body parts (both arms and both legs).");
         GreetOnLoad = B(c, "Chat", "GreetOnLoad", true, "true = when a save finishes loading, Jun greets you once using the game's normal dialogue box (not the speech bubble).");
         UseCharacters = B(c, "Memory", "UseCharacters", true, "true = give Jun short personality notes about the game characters (jun_characters.txt, editable). A character is added when you mention them.");
+        BrainState = B(c, "Chat", "BrainState", true, "true = tell the model Jun's own feelings from the game: how much she likes you (sympathy), how much she misses you (longing) and her desire (horniness), so they colour her replies. false = leave them out.");
         StoryContext = B(c, "Chat", "StoryContext", true, "true = tell the model which story events/flags the save has already reached, so Jun knows what happened between you.");
         RememberStory = B(c, "Memory", "RememberStory", true, "true = write down every line of story/dialogue you see in the game (plus your chats with Jun) to " + Host.RootLabel + "\\jun_memory.txt and let Jun remember it.");
         RecallLines = B(c, "Memory", "RecallLines", 12, "How many older remembered lines that match your message are added, so she can recall old events when you ask.");
@@ -236,6 +238,8 @@ public class Snap
     public string Bot = "Jun", Player = "Anon", Debug = "";
     public int Day, Money, Tokens;
     public float Health, Stamina, Mental, Satiation, Mood;
+    // Jun's own brain state (the game's "Bot stats"): sympathy tier from the game's own conditions, longing, horniness
+    public int Sympathy, Lust; public float Longing, Horny, HornyMax; public string Bond = ""; public bool MissesALot;
     public bool RentDue, Clothed;
     public int Hour, Intel;
     public string Flags = "";
@@ -387,6 +391,15 @@ public static class GameLink
         s.Mental = Try(() => Convert.ToSingle(gv.MentalHealth), 0f, err, "MentalHealth");
         s.Satiation = Try(() => Convert.ToSingle(gv.Satiation), 0f, err, "Satiation");
         s.Mood = Try(() => Convert.ToSingle(gv.Mood), 0f, err, "Mood");
+        s.Sympathy = Try(() => Convert.ToInt32(gv.sympathy), 0, err, "sympathy");
+        s.Lust = Try(() => Convert.ToInt32(gv.lust), 0, err, "lust");
+        s.Longing = Try(() => Convert.ToSingle(gv.Longing), 0f, err, "Longing");
+        s.Horny = Try(() => Convert.ToSingle(gv.CurrentHorniness), 0f, err, "CurrentHorniness");
+        s.HornyMax = Try(() => Convert.ToSingle(gv.PotentialHorniness), 0f, err, "PotentialHorniness");
+        s.Bond = Try(() => BrainState.Bond(), "", err, "sympathy tier");
+        s.MissesALot = Try(() => Il2CppStoryConditions.StoryCondition.CommonConditions.VeryHighLonging.ConditionMet(), false, err, "VeryHighLonging");
+        BrainState.LogOnce(s);
+        if (Mod.Chat) Personality.Capture();
         s.RentDue = Try(() => gv.IsRentDue, false, err, "IsRentDue");
         s.Hour = Try(() => Convert.ToInt32(gv.Hour), -1, err, "Hour");
         s.Intel = Try(() => Convert.ToInt32(gv.Inteligence), 0, err, "Inteligence");
@@ -3804,7 +3817,7 @@ public static class Routes
 {
     static readonly string[] common = { "/common.js", "/logo", "/icon", "/favicon.ico", "/fonts.css", "/gameui.css", "/gameui.js", "/settings", "/api/settings", "/api/settings/set", "/api/state" };
     static readonly string[] story = { "/stories", "/stage", "/packs", "/api/backgrounds", "/api/music", "/api/music/play", "/api/stories", "/api/story", "/api/story/check", "/api/story/delete", "/api/story/play", "/api/story/save" };
-    static readonly string[] chat = { "/", "/diary", "/pet", "/pet/frame.png", "/api/chat", "/api/clear", "/api/cmd", "/api/history", "/api/diary", "/api/diary/write", "/api/pet/info", "/api/pet/react" };
+    static readonly string[] chat = { "/", "/diary", "/pet", "/pet/frame.png", "/api/chat", "/api/clear", "/api/cmd", "/api/history", "/api/diary", "/api/diary/write", "/api/personality", "/api/personality/write", "/api/pet/info", "/api/pet/react" };
 
     public static bool Allowed(string path)
     {
@@ -3868,6 +3881,7 @@ public static class PanelServer
             StoryPacks.BackgroundAvailable = n => Array.IndexOf(InGameChat.BackgroundNames, n) >= 0 || InGameChat.CustomBgExists(n);
             Cfg.Log.LogInfo(Mod.Name + " " + Mod.Version + " is running. Open http://127.0.0.1:" + Cfg.Port.Value + (Mod.Stories ? "/stories" : "") + " in your browser.");
             Task.Run(Loop);
+            Updates.CheckSoon();
         }
         catch (Exception ex)
         {
@@ -4038,6 +4052,7 @@ public static class PanelServer
                 if (path == "/api/settings") { await Send(ctx, 200, "application/json", SettingsPage.Json()); return; }
                 if (path == "/diary") { await Send(ctx, 200, "text/html; charset=utf-8", Routes.Page("diary.html")); return; }
                 if (path == "/api/diary") { await Send(ctx, 200, "application/json", Diary.Json()); return; }
+                if (path == "/api/personality") { await Send(ctx, 200, "application/json", Personality.Json()); return; }
                 if (path == "/api/pet/info") { PetView.Touch(); await Send(ctx, 200, "application/json", JsonSerializer.Serialize(new { status = PetView.Status, w = PetView.W, h = PetView.H, seq = PetView.Seq })); return; }
                 if (path == "/pet/frame.png")
                 {
@@ -4138,6 +4153,14 @@ public static class PanelServer
                     await Send(ctx, 200, "application/json", JsonSerializer.Serialize(new { ok = serr == null, error = serr }));
                     return;
                 }
+                if (path == "/api/personality/write")
+                {
+                    bool adult = false;
+                    try { using (var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body)) if (doc.RootElement.TryGetProperty("adult", out var av)) adult = av.ValueKind == JsonValueKind.True; } catch { }
+                    string perr = Personality.Start(adult);
+                    await Send(ctx, 200, "application/json", JsonSerializer.Serialize(new { ok = perr == null, error = perr }));
+                    return;
+                }
                 if (path == "/api/diary/write")
                 {
                     int dd = 0;
@@ -4229,6 +4252,20 @@ public static class PanelServer
         return " Background: these internal story events already happened in your shared life (names are game flags, read them as hints only, never quote them): " + s.Flags + ".";
     }
 
+    // Jun's feelings in words (not numbers), so the model can play them instead of reciting them
+    static string BrainText(Snap s)
+    {
+        if (!Cfg.BrainState.Value || !s.Loaded) return "";
+        var t = new StringBuilder(" How you feel inside right now (the game's own state; let it colour your tone and words naturally, never say these as numbers or stats):");
+        if (!string.IsNullOrEmpty(s.Bond)) t.Append(" your feelings for " + s.Player + ": " + s.Bond + ".");
+        t.Append(s.MissesALot ? " You miss " + s.Player + " badly and crave closeness." : s.Longing >= 5f ? " You miss " + s.Player + " and want some closeness." : s.Longing >= 2f ? " You would like a little closeness." : "");   // game scale: "very high" is above 9.5 (log 2026-10-23)
+        float h = s.HornyMax > 0.01f ? s.Horny / s.HornyMax : s.Horny;
+        if (h >= 0.75f) t.Append(" Your physical desire is strong and hard to hide.");
+        else if (h >= 0.4f) t.Append(" You feel some physical desire.");
+        else if (h >= 0.15f) t.Append(" A faint physical desire, easy to ignore.");
+        return t.ToString();
+    }
+
     static string StateText(Snap s)
     {
         if (!s.Loaded) return "unknown";
@@ -4245,9 +4282,11 @@ public static class PanelServer
         {
             loaded = s.Loaded, bot = s.Bot, player = s.Player, day = s.Day, money = s.Money, tokens = s.Tokens,
             health = s.Health, stamina = s.Stamina, mental = s.Mental, satiation = s.Satiation, mood = s.Mood,
+            sympathy = s.Sympathy, bond = s.Bond, longing = s.Longing, horny = s.Horny, hornyMax = s.HornyMax, lust = s.Lust,
             rentDue = s.RentDue, debug = s.Debug, result = Shared.LastResult, emotes = Shared.EmoteInfo,
             ready = s.Ready, missing = s.Missing, stage = s.Stage, intel = s.Intel, editor = PublicBuild.Editor,
-            mod = Mod.Name, otherMod = Mod.OtherName, otherPort = Mod.OtherPort
+            mod = Mod.Name, otherMod = Mod.OtherName, otherPort = Mod.OtherPort,
+            version = Mod.Version, update = Updates.Latest, updateUrl = Updates.Url, updatePrivate = Updates.PrivateBuild
         });
     }
 
@@ -4315,7 +4354,7 @@ public static class PanelServer
     {
         var snap = Shared.Current;
         string system = Cfg.SystemPrompt.Value
-            .Replace("{bot}", snap.Bot).Replace("{player}", snap.Player).Replace("{state}", StateText(snap)) + StoryText(snap) + StoryMemory.Recent(userText) + Characters.For(userText, LastReplyText()) + Cfg.TagRules;
+            .Replace("{bot}", snap.Bot).Replace("{player}", snap.Player).Replace("{state}", StateText(snap)) + BrainText(snap) + StoryText(snap) + StoryMemory.Recent(userText) + Characters.For(userText, LastReplyText()) + Cfg.TagRules;
         var messages = new List<object> { new { role = "system", content = system } };
 
         bool wasBusy;
@@ -4407,5 +4446,85 @@ public static class PanelServer
             }
         }
         return sb.Length > 0 ? sb.ToString().Trim() : (error ?? "");
+    }
+}
+
+
+// ---- Jun's brain state (Chat > BrainState): reads the game's own sympathy tiers, so the thresholds are always the game's ----
+public static class BrainState
+{
+    public static string Bond()
+    {
+        var c = Il2CppStoryConditions.StoryCondition.CommonConditions;
+        if (c.SympathySuperLove.ConditionMet()) return "you adore them completely";
+        if (c.SympathyLove.ConditionMet()) return "you love them";
+        if (c.SympathyAffection.ConditionMet()) return "real affection";
+        if (c.SympathyLike.ConditionMet()) return "you like them";
+        if (c.SympathyDetest.ConditionMet()) return "you detest them";
+        if (c.SympathyHate.ConditionMet()) return "you hate them";
+        if (c.SympathyDislike.ConditionMet()) return "you dislike them";
+        if (c.SympathyPositive.ConditionMet()) return "you are warming up to them";
+        return "neutral, still unsure about them";
+    }
+
+    static bool logged;
+    // once per session: the raw numbers and the game's own tier rules, so we can check the wording against real saves
+    public static void LogOnce(Snap s)
+    {
+        if (logged || !s.Loaded) return; logged = true;
+        try
+        {
+            var c = Il2CppStoryConditions.StoryCondition.CommonConditions; string rules = "";
+            try { rules = "love: " + c.SympathyLove.Explain() + " | like: " + c.SympathyLike.Explain() + " | very high longing: " + c.VeryHighLonging.Explain(); } catch (Exception ex) { rules = "(rules unreadable: " + ex.Message + ")"; }
+            Cfg.Log.LogInfo("Brain state: sympathy " + s.Sympathy + " (" + s.Bond + "), longing " + s.Longing.ToString("0.00") + (s.MissesALot ? " (very high)" : "") +
+                ", horniness " + s.Horny.ToString("0.00") + " of " + s.HornyMax.ToString("0.00") + ", lust " + s.Lust + ". Game rules: " + rules);
+        }
+        catch { }
+    }
+}
+
+
+// ---- update check (Panel > CheckUpdates): one request to GitHub's "latest release" when the game starts ----
+// Only tells you (log + a popup on the web pages, with the download link). It never downloads or replaces anything:
+// the game has the mod's DLL open while it runs, and a mod that installs code by itself is a bad idea anyway.
+public static class Updates
+{
+    public static volatile string Latest = "", Url = "";
+#if PRIVATE_BUILD
+    public const bool PrivateBuild = true;
+#else
+    public const bool PrivateBuild = false;
+#endif
+
+    public static void CheckSoon()
+    {
+        if (!Cfg.CheckUpdates.Value) return;
+        Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(8000);
+                using (var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) })
+                {
+                    http.DefaultRequestHeaders.UserAgent.ParseAdd(Mod.Folder + "/" + Mod.Version);
+                    http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+                    string json = await http.GetStringAsync("https://api.github.com/repos/" + Mod.Repo + "/releases/latest");
+                    using (var doc = JsonDocument.Parse(json))
+                    {
+                        string tag = doc.RootElement.GetProperty("tag_name").GetString() ?? "";
+                        string url = doc.RootElement.TryGetProperty("html_url", out var u) ? u.GetString() : "https://github.com/" + Mod.Repo + "/releases";
+                        Version have, got;
+                        if (!Version.TryParse(Mod.Version, out have) || !Version.TryParse(tag.TrimStart('v', 'V'), out got)) return;
+                        if (got > have)
+                        {
+                            Latest = got.ToString(); Url = url;
+                            Cfg.Log.LogWarning(Mod.Name + " " + Latest + " is out (you have " + Mod.Version + "). Download: " + url + (PrivateBuild ? "  (this is your private build: make a new private build from the updated source instead)" : ""));
+                        }
+                        else Cfg.Log.LogInfo("Update check: " + Mod.Name + " " + Mod.Version + " is the newest version.");
+                    }
+                }
+            }
+            catch (Exception ex) { Cfg.Log.LogInfo("Update check skipped (" + ex.Message + ")."); }
+        });
     }
 }

@@ -490,3 +490,30 @@ Split fixes after the first side-by-side test (untested in game)
   release zip's UserData folder first skipped it. It now runs once by a marker file (.copied_old_stories) and never overwrites.
 - Story Creator: the text box stayed frozen on the last line after a story ended. The box fade-out (TickFade) and mouth
   animation (TickSpeech) were only run by Jun Link after the split; both mods run them now (they are idle unless asked).
+
+=== Jun Link 1.2.0 ===
+Thanks to Vernier for the idea and to Ikari for mining the personality trigger list.
+- NEW: Jun's own brain state in her replies (Chat > BrainState, on by default). Read from the game each moment:
+  how she feels about you (the game's own sympathy tiers, Detest ... SuperLove), how much she misses you (longing; the game
+  calls it very high above 9.5) and her desire (horniness against its current maximum). Given to the model as words, not numbers.
+  Lust is read and logged but not used (it looks like a running total). One log line per session shows the raw values and the
+  game's own tier rules ("Brain state: ..."). Confirmed in game (log 2026-10-23); longing scale fixed from that log.
+- NEW: Personality from her diary (diary page). Your AI writes her lines for everyday moments (greeting, headpat, handholding,
+  cuddles, kisses, shower) from her last 3 diary entries and how she feels, and saves a normal game personality mod
+  (JunLink_Personality.zip in the game's own Mods folder; an editable copy in UserData\JunLink\personality_mod).
+  Restart the game, buy "Jun's Heart (Jun Link)" in the Lady Parts shop, equip it. Greeting and cuddle start also get
+  "I missed you" lines the game picks by itself while her longing is 5 or more. Writing it again replaces it (same mod id).
+  Confirmed in game for the everyday moments (2026-10-23).
+- NEW: the moments are a text file you can edit: UserData\JunLink\personality_triggers.txt (TriggerName | what happens).
+  Any trigger from the game's list can be added. (untested in game)
+- NEW: optional adult moments (checkbox, off by default, 18+, consensual only). Non-consent triggers ("Rape" in the name)
+  are never written, even if added to the file by hand; they keep the game's own lines. Question/choice triggers are not in
+  the default list. Generated lines stay on your PC; nothing explicit is in the mod or the repo. (untested in game)
+- Personality writer: a new connection per AI request plus one retry (KoboldCpp dropped the kept-alive one after the first set).
+- NEW: update notice (both mods, Panel > CheckUpdates, on by default). Once per game start the mod asks GitHub's
+  "latest release" for its own repo; if it is newer, the log says so and the web pages show a popup with the download link
+  (once per browser session). Nothing is downloaded or installed by itself (the game holds the DLL open, and a mod that
+  installs code by itself is a bad idea). Private builds say "make a new private build" instead. (untested in game)
+
+=== Story Creator 1.0.1 ===
+- NEW: the same update notice as Jun Link 1.2.0 (Panel > CheckUpdates). (untested in game)

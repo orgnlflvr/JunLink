@@ -31,6 +31,12 @@ main{max-width:720px;margin:0 auto;padding:16px}
   <span style="flex:1"></span>
   <a href="/">panel</a>
 </header>
+<section id="pers" style="max-width:820px;margin:14px auto 0;padding:12px 16px;border:1px solid var(--line);border-radius:10px">
+  <b>Personality from her diary</b>
+  <div class="mut" style="margin:4px 0 8px">Your AI writes her lines for everyday moments (greeting, headpat, cuddles, kisses, shower) from this diary and how she feels right now, and saves them as a game personality mod. Restart the game, then buy and equip it in the Lady Parts shop. Takes a few minutes. Which moments it writes: <code>UserData\\JunLink\\personality_triggers.txt</code> (add your own there).</div>
+  <label class="mut" style="display:block;margin:0 0 8px"><input type="checkbox" id="padult"> Also write adult moments (consensual sex scenes only, 18+). Slower: many more sets to write.</label>
+  <button id="pwrite">Write her personality</button> <span class="mut" id="pstatus"></span>
+</section>
 <main id="list"><div class="empty">Loading...</div></main>
 <script>
 const $=id=>document.getElementById(id);
@@ -67,6 +73,20 @@ async function write(day){
   setTimeout(load,400);
 }
 $('write').onclick=()=>write(0);
+let ptimer=null;
+async function pload(){
+  let j; try{ j=await (await fetch('/api/personality')).json(); }catch(e){ return; }
+  $('pwrite').disabled=j.busy; $('pwrite').textContent=j.busy?('writing '+j.done+' of '+j.total+'...'):'Write her personality';
+  $('pstatus').textContent=(j.status||'')+(j.folder&&!j.busy?' Saved in: '+j.folder:'');
+  clearTimeout(ptimer); ptimer=setTimeout(pload, j.busy?1500:10000);
+}
+$('pwrite').onclick=async()=>{
+  const M=window.MDRG; if(M && !(await M.ask('Write her personality mod from the diary now? Your AI server needs to be running. Writing it again replaces the old one.',{ok:'Write',title:'Personality'}))) return;
+  try{ const r=await (await fetch('/api/personality/write',{method:'POST',headers:H,body:JSON.stringify({adult:$('padult').checked})})).json();
+    if(!r.ok) window.MDRG&&MDRG.toast(r.error||'Could not start.','bad'); else window.MDRG&&MDRG.toast('She is writing her personality...','info'); }catch(e){}
+  setTimeout(pload,400);
+};
+pload();
 load();
 </script>
 <script src="/gameui.js"></script>

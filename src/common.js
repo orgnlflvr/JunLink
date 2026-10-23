@@ -199,5 +199,21 @@
   }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 
+  // update notice: the mod asks GitHub once when the game starts; if a newer release is out, say so once per browser session
+  function updateNotice() {
+    realFetch('/api/state').then(function (r) { return r.json(); }).then(function (s) {
+      if (!s || !s.update || !toasts) return;
+      var key = 'mdrg-update-' + s.mod + '-' + s.update;
+      try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) { }
+      var t = document.createElement('div'); t.className = 'mdrg-toast info';
+      t.appendChild(document.createTextNode(s.mod + ' ' + s.update + ' is out (you have ' + s.version + '). '));
+      var a = document.createElement('a'); a.href = s.updateUrl; a.target = '_blank'; a.rel = 'noopener'; a.textContent = s.updatePrivate ? 'See what changed' : 'Download';
+      a.style.color = 'inherit'; a.style.fontWeight = '700'; t.appendChild(a);
+      toasts.appendChild(t);
+      setTimeout(function () { t.style.transition = '.3s'; t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 300); }, 15000);
+    }).catch(function () { });
+  }
+  setTimeout(updateNotice, 1500);
+
   window.MDRG = { toast: toast, ask: ask, begin: begin, end: end };   // begin(name) -> task, end(task, ok): show your own work on the bar
 })();

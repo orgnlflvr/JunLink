@@ -14,7 +14,7 @@ Chat with Jun in **!Ω Factorial Omega: My Dystopian Robot Girlfriend** by Incon
 
 | | Version |
 | --- | --- |
-| Jun Link | 1.1.0 |
+| Jun Link | 1.2.0 |
 | Game | 0.97.12 |
 | MelonLoader | **0.7.3** (stable) |
 | OS | Windows |
@@ -28,8 +28,18 @@ Chat with Jun in **!Ω Factorial Omega: My Dystopian Robot Girlfriend** by Incon
 - **She remembers.** Jun keeps notes of what happened in your save and your chats, and uses them when you talk.
 - **She knows how you're doing.** Your health, stamina, mental health, hunger, mood and the time of day are part of what she sees.
 - **Greeting.** Jun greets you once when you load a save.
+- **She has feelings of her own.** How much she likes you, how much she misses you and her desire come straight from the game's own brain state and colour how she talks.
 - **Diary.** At the end of every in-game day, Jun writes a short diary entry. Read it at `http://127.0.0.1:8765/diary`.
+- **Personality from her diary** *(new in 1.2)*. One button on the diary page: your AI writes her lines for everyday moments (greeting, headpat, cuddles, kisses, shower) from her diary and how she feels, and saves them as a normal game personality mod. Restart the game, buy **Jun's Heart (Jun Link)** in the Lady Parts shop and equip it. While she misses you a lot, her greeting and cuddle lines switch to "I missed you" ones by themselves.
+- **Update notice** *(new in 1.2)*. When the game starts, Jun Link asks GitHub once whether a newer version is out and tells you in the log and on its pages. It never downloads or installs anything by itself. Turn it off with Panel > CheckUpdates.
 - **Settings page.** Every option on one page (F8), no file editing.
+
+### Personality moments
+
+The moments it writes are listed in `UserData\JunLink\personality_triggers.txt`, one per line: `TriggerName | what happens`. Add any trigger from the game's personality trigger list (thanks to Ikari for mining it, and to Vernier for the idea).
+
+> [!NOTE]
+> **Adult moments are optional**: a checkbox on the diary page, off by default, 18+, consensual scenes only. Non-consent triggers are never written and keep the game's own lines. The lines are written on your PC by your own AI and stay there; nothing explicit is part of this mod or this repo.
 
 ### Jun has to be awake first
 
@@ -46,7 +56,7 @@ Until then, F2 shows a checklist of what is still missing. Keep playing; it unlo
 1. Make a copy of your game folder. Work only in the copy.
 2. Run the [MelonLoader](https://github.com/LavaGang/MelonLoader) installer, pick the game's `.exe` from the copy, choose **0.7.3**, and install.
 3. Start the game once and let MelonLoader finish setting up. Close it at the menu.
-4. Download `JunLink_1.1.0.zip` from [Releases](../../releases) and copy its `Mods` folder into the game folder.
+4. Download `JunLink_1.2.0.zip` from [Releases](../../releases) and copy its `Mods` folder into the game folder.
 5. Start your AI server. Easiest: [KoboldCpp](https://github.com/LostRuins/koboldcpp). Open `koboldcpp.exe`, pick a `.gguf` model, press **Launch**, and leave it running. It listens on `http://127.0.0.1:5001`, the mod's default.
 6. Start the game and load your save.
 
@@ -84,8 +94,10 @@ Everything is on the settings page (F8 or `http://127.0.0.1:8765/settings`) and 
 | AI server > Url | `http://127.0.0.1:5001` | Your AI server. llama-server `:8080`, LM Studio `:1234`, Ollama `:11434` |
 | AI server > Model | empty | KoboldCpp and llama-server use the loaded model; Ollama and LM Studio need its name |
 | Chat > GreetOnLoad | true | Jun greets you when a save loads |
+| Chat > BrainState | true | Her own feelings from the game (sympathy, longing, desire) shape her replies |
 | Diary > Enabled | true | Jun writes a diary entry at the end of each day |
 | Requirements | see above | When Jun Link switches on |
+| Panel > CheckUpdates | true | Ask GitHub once per game start whether a newer version is out (only tells you) |
 | Panel > Port | 8765 | Address of the web pages |
 
 ## Reporting problems

@@ -32,6 +32,7 @@
     <Compile Include="..\Settings.cs" />
     <Compile Include="..\StoryPacks.cs" />
     <Compile Include="..\Llm.cs" />
+    <Compile Include="..\Personality.cs" />
     <Compile Include="MelonHost.cs" />
 
     <Reference Include="$(GameDir)\MelonLoader\net6\MelonLoader.dll" />

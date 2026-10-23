@@ -12,17 +12,17 @@ using UnityEngine;
 //   (default) -p:Private=true -> Jun Link private  JunLink.Private.dll  + money/stat editor, never shared
 
 #if STORY_MOD
-[assembly: MelonInfo(typeof(ModEntry), "Story Creator", "1.0.0", "Original Flavour", "https://github.com/orgnlflvr/StoryCreator")]
-[assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("1.0.0.0")]
+[assembly: MelonInfo(typeof(ModEntry), "Story Creator", "1.0.1", "Original Flavour", "https://github.com/orgnlflvr/StoryCreator")]
+[assembly: System.Reflection.AssemblyVersion("1.0.1.0")]
+[assembly: System.Reflection.AssemblyFileVersion("1.0.1.0")]
 #elif PRIVATE_BUILD
-[assembly: MelonInfo(typeof(ModEntry), "Jun Link (private)", "1.1.0", "Original Flavour", "https://github.com/orgnlflvr/JunLink")]
-[assembly: System.Reflection.AssemblyVersion("1.1.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("1.1.0.0")]
+[assembly: MelonInfo(typeof(ModEntry), "Jun Link (private)", "1.2.0", "Original Flavour", "https://github.com/orgnlflvr/JunLink")]
+[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("1.2.0.0")]
 #else
-[assembly: MelonInfo(typeof(ModEntry), "Jun Link", "1.1.0", "Original Flavour", "https://github.com/orgnlflvr/JunLink")]
-[assembly: System.Reflection.AssemblyVersion("1.1.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("1.1.0.0")]
+[assembly: MelonInfo(typeof(ModEntry), "Jun Link", "1.2.0", "Original Flavour", "https://github.com/orgnlflvr/JunLink")]
+[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("1.2.0.0")]
 #endif
 [assembly: MelonGame("IncontinentCell", "My Dystopian Robot Girlfriend")]
 
