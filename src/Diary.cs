@@ -189,7 +189,12 @@ public static class Diary
             bot = s != null ? s.Bot : "Jun",
             writing = writing,
             status = Status,
-            entries = All()
+            entries = All(),
+#if MELON
+            streams = StreamLog.All()
+#else
+            streams = new object[0]
+#endif
         });
     }
 }

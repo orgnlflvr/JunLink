@@ -42,6 +42,10 @@ public class PanelBehaviour : MonoBehaviour
         catch (Exception ex) { Shared.LastResult = "Update error: " + ex.Message; }
         try { InGameChat.Tick(); }
         catch (Exception ex) { Shared.LastResult = "Chat error: " + ex.GetType().Name + ": " + ex.Message; Cfg.Log.LogError(ex.ToString()); }
+#if MELON
+        try { StreamMode.Tick(); }
+        catch (Exception ex) { Cfg.Log.LogError("Stream error: " + ex); }
+#endif
     }
 
     void LateUpdate()
@@ -111,7 +115,7 @@ public static class Mod
     public const int DefaultPort = 8766; public const string DefaultSettingsKey = "F9";
     public const string OtherName = "Jun Link", OtherWhat = "AI chat with Jun"; public const int OtherPort = 8765;
 #else
-    public const string Name = "Jun Link", Folder = "JunLink", Version = "1.2.0", Repo = "orgnlflvr/JunLink";
+    public const string Name = "Jun Link", Folder = "JunLink", Version = "1.3.0", Repo = "orgnlflvr/JunLink";
     public const bool Stories = false, Chat = true;
     public const int DefaultPort = 8765; public const string DefaultSettingsKey = "F8";
     public const string OtherName = "Story Creator", OtherWhat = "custom stories and minigames"; public const int OtherPort = 8766;
@@ -160,7 +164,8 @@ public static class Cfg
     public static Setting<int> PetFps, PetHeight, PetBgFps;
     public static Setting<int> BubbleSeconds;
     public static Setting<float> SpeakSpeed;
-    public static Setting<bool> DiaryEnabled;
+    public static Setting<bool> DiaryEnabled, StreamEnabled, StreamPayout;
+    public static Setting<int> StreamPayoutPercent, StreamPayoutCap;
     public static Setting<int> DiaryWords, DiaryNotes;
     public static Setting<string> DiaryPrompt;
     public const string TagRules = " Start every reply with one or two tags in square brackets. Mood: [happy] [sad] [angry] [shy] [surprised] [neutral] (add very, e.g. [veryhappy]). Optional gesture: [wave] only when greeting or saying goodbye, [point] or [lecture] when explaining. Example: [happy][wave] Hey, you are back! Write tags exactly as shown, lowercase, no dots or spaces. Speak only the words Jun says out loud. Never write actions or narration between asterisks like *smiles*.  Only when the player clearly asks you to do it and you agree, add ONE action tag: [feed] you give them or eat food (fills hunger), [rest] you rest or sleep (stamina), [heal] you tend to their wounds (health), [comfort] you cheer them up (mood). Never use an action tag otherwise. Never explain the tags.";
@@ -215,6 +220,10 @@ public static class Cfg
         RecallLines = B(c, "Memory", "RecallLines", 12, "How many older remembered lines that match your message are added, so she can recall old events when you ask.");
         MemoryLines = B(c, "Memory", "MemoryLines", 60, "How many of the latest remembered lines are sent to the model each time.");
         HistoryMessages = B(c, "Chat", "HistoryMessages", 12, "How many past messages are sent each time.");
+        StreamPayout = B(c, "Stream", "Payout", true, "true = what viewers donate on streamhub.ic is paid out to you as real in-game money when the stream ends (once per in-game day, after the platform's cut, up to a daily cap). false = stream money is just for fun.");
+        StreamPayoutPercent = B(c, "Stream", "PayoutPercent", 50, "How much of the donations you get after the platform's cut, in percent (0-100).");
+        StreamPayoutCap = B(c, "Stream", "PayoutDailyCap", 0, "The most one day of streaming can pay you, in $. 0 = automatic: 15% of your current weekly rent.");
+        StreamEnabled = B(c, "Stream", "Enabled", true, "true = Jun can stream: a streamhub.ic icon on Anon's PC desktop opens the (fictional, SFW) stream site. false = no icon, no stream mode. Takes effect the next time you open the PC.");
         DiaryEnabled = B(c, "Diary", "Enabled", true, "true = when the in-game day moves on, Jun writes a short diary entry about the day that ended (from jun_memory.txt). Read it at http://127.0.0.1:8765/diary. Needs Memory/RememberStory = true to have anything to write about.");
         DiaryWords = B(c, "Diary", "Words", 120, "About how long each entry is, in words.");
         DiaryNotes = B(c, "Diary", "NotesPerDay", 80, "At most this many remembered lines of the day are given to the model (the latest ones).");
@@ -496,6 +505,46 @@ public static class PetView
     public static void Touch() { lastReq = DateTime.UtcNow.Ticks; }
     static bool Active { get { return DateTime.UtcNow.Ticks - lastReq < 4 * TimeSpan.TicksPerSecond; } }
     static Camera cam; static RenderTexture rt; static Texture2D tex;
+    public static Texture Tex { get { return Png != null ? (Texture)rt : null; } }      // the live render, for the stream facecam
+    // stream mode: render her much bigger (the close-up crops her face and blows it up), smoother and anti-aliased.
+    // the pet app's png is then only refreshed twice a second, so the big render stays cheap
+    public static bool StreamHi; static float nextPng;
+
+    // stream mode: one picture of the room from the game's own camera, with Jun left out (she is on the camera already)
+    public static Texture2D RoomShot(int w, int h)
+    {
+        var main = Camera.main; if (main == null) return null;
+        var ci = InGameChat.PetController();
+        var ts = ci != null ? ci.GetComponentsInChildren<Transform>(true) : null;
+        var old = ts != null ? new int[ts.Length] : null;
+        var shot = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32); shot.Create();
+        var prevTarget = main.targetTexture; int prevMask = main.cullingMask;
+        // the game's HUD (day, money, bars, save/home buttons, the little interaction markers) is drawn by canvases this camera renders:
+        // those are switched off for this one picture, and the UI layer is left out too
+        var offCanvases = new List<Canvas>();
+        try
+        {
+            foreach (var cv in UnityEngine.Object.FindObjectsOfType<Canvas>())
+                try { if (cv != null && cv.enabled && cv.renderMode != RenderMode.ScreenSpaceOverlay) { cv.enabled = false; offCanvases.Add(cv); } } catch { }
+            if (ts != null) for (int i = 0; i < ts.Length; i++) { old[i] = ts[i].gameObject.layer; ts[i].gameObject.layer = PetLayer; }
+            int ui = LayerMask.NameToLayer("UI");
+            main.cullingMask = prevMask & ~(1 << PetLayer) & (ui >= 0 ? ~(1 << ui) : ~0);
+            main.targetTexture = shot; main.Render();
+            var prev = RenderTexture.active; RenderTexture.active = shot;
+            var t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            t.ReadPixels(new UnityEngine.Rect(0, 0, w, h), 0, 0, false); t.Apply();
+            RenderTexture.active = prev;
+            t.hideFlags = HideFlags.DontUnloadUnusedAsset;
+            return t;
+        }
+        finally
+        {
+            main.targetTexture = prevTarget; main.cullingMask = prevMask;
+            foreach (var cv in offCanvases) { try { cv.enabled = true; } catch { } }
+            if (ts != null) for (int i = 0; i < ts.Length; i++) { try { ts[i].gameObject.layer = old[i]; } catch { } }
+            shot.Release(); UnityEngine.Object.Destroy(shot);
+        }
+    }
     static float nextAt; static bool warned; static int lockedId; static bool haveFrame; static Bounds frame;
     const int PetLayer = 31;
 
@@ -507,7 +556,8 @@ public static class PetView
         if (!Cfg.PetEnabled.Value) { Status = "disabled in the cfg (Pet/Enabled)"; return; }
         if (!Active) { if (rt != null) Free(); return; }
         if (Time.unscaledTime < nextAt) return;
-        nextAt = Time.unscaledTime + 1f / Mathf.Clamp(Cfg.PetFps.Value, 1, 60);
+        int fps = Mathf.Clamp(Cfg.PetFps.Value, 1, 60); if (StreamHi) fps = Mathf.Max(fps, 30);
+        nextAt = Time.unscaledTime + 1f / fps;
         try { Render(); }
         catch (Exception ex)
         {
@@ -559,12 +609,23 @@ public static class PetView
 
         float padY = frame.size.y * 1.04f, padX = frame.size.x * 1.12f;
         float aspect = Mathf.Clamp(padX / Mathf.Max(0.01f, padY), 0.2f, 2f);
-        int ph = Mathf.Clamp(Cfg.PetHeight.Value, 200, 2000), pw = Mathf.Max(64, (int)(ph * aspect));
-        if (rt == null || rt.width != pw || rt.height != ph)
+        int ph = Mathf.Clamp(Cfg.PetHeight.Value, 200, 2000);
+        if (StreamHi) ph = Mathf.Max(ph, Mathf.Clamp(Screen.height * 2, 1600, 2800));
+        int pw = Mathf.Max(64, (int)(ph * aspect));
+        bool hq = StreamHi;
+        if (rt == null || rt.width != pw || rt.height != ph || (rt.antiAliasing > 1) != hq)
         {
             if (rt != null) { rt.Release(); UnityEngine.Object.Destroy(rt); }
             if (tex != null) UnityEngine.Object.Destroy(tex);
-            rt = new RenderTexture(pw, ph, 24, RenderTextureFormat.ARGB32); rt.Create();
+            rt = new RenderTexture(pw, ph, 24, RenderTextureFormat.ARGB32);
+            if (hq)
+            {
+                rt.antiAliasing = 4;                                   // smooth edges
+                rt.useMipMap = true; rt.autoGenerateMips = true;        // clean when shown smaller (the chatting view)
+                rt.filterMode = FilterMode.Trilinear; rt.anisoLevel = 4;
+            }
+            else rt.filterMode = FilterMode.Bilinear;
+            rt.Create();
             tex = new Texture2D(pw, ph, TextureFormat.RGBA32, false);
             W = pw; H = ph;
         }
@@ -575,6 +636,7 @@ public static class PetView
             cam.orthographic = true; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(0f, 0f, 0f, 0f);
             cam.cullingMask = 1 << PetLayer; cam.nearClipPlane = 0.1f; cam.farClipPlane = 300f; cam.allowHDR = false; cam.allowMSAA = false;
         }
+        cam.allowMSAA = hq;
         cam.targetTexture = rt;
         cam.orthographicSize = padY * 0.5f;
         cam.aspect = (float)pw / ph;
@@ -587,6 +649,8 @@ public static class PetView
         try
         {
             cam.Render();
+            if (hq && Png != null && Time.unscaledTime < nextPng) { Seq++; Status = "ok"; return; }   // the stream reads rt directly
+            nextPng = Time.unscaledTime + 0.5f;
             var prev = RenderTexture.active; RenderTexture.active = rt;
             tex.ReadPixels(new Rect(0, 0, pw, ph), 0, 0, false);
             RenderTexture.active = prev;
@@ -768,6 +832,7 @@ public static class InGameChat
     public static volatile bool OpenRequested;
     public static volatile bool ZoomRequested;
     public static volatile string PendingReply;
+    public static bool StreamLive, StreamPlain;     // set by stream mode (Stream.cs): a stream is live / the next reply is her answer on stream
     public static KeyCode Key = KeyCode.F2, ZoomKey = KeyCode.F4, StoryKey = KeyCode.F3, SettingsKey = KeyCode.F8;
     public static volatile bool SettingsRequested;
     static string lastUser = "";
@@ -986,6 +1051,14 @@ public static class InGameChat
         Cfg.Log.LogInfo("Greeting: stopped, Story Creator started a story");
     }
 
+    // our own lines are marked, so stream mode lets them through while it keeps the game's own dialogue quiet
+    static void Mine(string t)
+    {
+#if MELON
+        StreamMode.Mine(t);
+#endif
+    }
+
     static void StartStory(string id)
     {
         if (!Requirements.Ready) { Shared.LastResult = Requirements.Why(); Cfg.Log.LogInfo("Story not started: " + Requirements.Why()); ShowNotReady(); return; }
@@ -1037,7 +1110,7 @@ public static class InGameChat
                 try { d.Stop(); } catch { }
                 try { d.SetCharacter(null); } catch { }
                 try { d.SetCharacterName("Stage preview", Color.white); } catch { }
-                d.Say("This is a sample text box, so you can see how much of the scene it covers.", true, true, false, false, null);
+                Mine("This is a sample text box"); d.Say("This is a sample text box, so you can see how much of the scene it covers.", true, true, false, false, null);
                 lastDialog = d; stageBoxShown = true;
             }
             else
@@ -2137,7 +2210,7 @@ public static class InGameChat
         storyCallbacks.Add(cb); if (storyCallbacks.Count > 20) storyCallbacks.RemoveAt(0);
         storyDialog = dialog;
         storyLen = text.Length; StoryAdvance = false; storySkipped = false; storyFix = 0; storyPrevText = storyLastText ?? ""; storyLastText = text;
-        dialog.Say(text, true, true, false, false, null);   // the game never moves on by itself; the plugin waits for your click
+        Mine(text); dialog.Say(text, true, true, false, false, null);   // the game never moves on by itself; the plugin waits for your click
         lastDialog = dialog; storyLastText = text;
         if (!stageMode) QueueStoryLog(name, text);
         // her mouth and face when she is the one talking
@@ -2362,6 +2435,7 @@ public static class InGameChat
     }
 
     static readonly List<Il2CppSystem.Action> notReadyCallbacks = new List<Il2CppSystem.Action>();
+    public static void NotReadyPopup() { ShowNotReady(); }
     static void ShowNotReady()
     {
         Shared.LastResult = Requirements.Why();
@@ -2461,7 +2535,8 @@ public static class InGameChat
             IntPtr gvPtr = gv.Pointer;
             if (gvPtr == greetedGv) return;
             if (Controller() == null) { greetReadyAt = -1f; GreetWhy("waiting: she is not on screen yet (no bot controller)"); return; }
-            if (StoryBusy) { greetedGv = gvPtr; GreetWhy("skipped: a story is playing (no greeting for this save)"); return; }    // the log showed the greeting firing in the middle of a story
+            if (StoryBusy) { greetedGv = gvPtr; GreetWhy("skipped: a story is playing (no greeting for this save)"); return; }
+            if (StreamLive) { GreetWhy("waiting: a stream is live"); return; }    // the log showed the greeting firing in the middle of a story
             if (greetReadyAt < 0f) { greetReadyAt = Time.unscaledTime; GreetWhy("save is loaded, she is on screen; waiting 5 s"); return; }
             if (Time.unscaledTime - greetReadyAt < 5f) return;           // let the game finish loading and fading in
             if (!Shared.Current.Loaded) { GreetWhy("waiting: game state not read yet"); return; }
@@ -2551,6 +2626,8 @@ public static class InGameChat
         }
         catch (Exception ex) { Shared.LastResult = "Zoom failed: " + ex.GetType().Name + ": " + ex.Message; }
     }
+
+    public static void StreamZoom(bool on) { if (on) ZoomIn(); else ZoomOut(); }
 
     static void ToggleZoom()
     {
@@ -2667,7 +2744,7 @@ public static class InGameChat
                 lastSayTime = now;
                 Cfg.Log.LogInfo("Keep-alive: message looked gone " + since.ToString("0.0") + " s after Say (text='" + cur + "', active=" + lastDialog.gameObject.activeInHierarchy + "), restoring " + restores + "/2");
                 lastDialog.gameObject.SetActive(true);
-                lastDialog.Say(bubbleText, true, true, false, false, null);
+                Mine(bubbleText); lastDialog.Say(bubbleText, true, true, false, false, null);
             }
         }
         catch { }
@@ -2720,6 +2797,9 @@ public static class InGameChat
             if (string.IsNullOrWhiteSpace(text)) return;
             if (!Requirements.Ready) { ShowNotReady(); return; }
             lastUser = text.Trim();
+#if MELON
+            if (StreamLive) { StreamMode.PlayerSays(lastUser); return; }      // on stream, you are one of the chatters
+#endif
             StoryMemory.Add(Shared.Current.Player + " (you) told " + Shared.Current.Bot + ": " + lastUser);
             Shared.LastResult = "Waiting for the model...";
             PanelServer.AskAsync(lastUser);
@@ -2831,6 +2911,9 @@ public static class InGameChat
     }
 
     // the game's main (story) dialogue box, not the small per-character bubble
+    // stream mode copies the look of the game's speech box from this one
+    public static SayDialog GameSpeechBox() { try { return FindDialog() ?? FindMainDialog(); } catch { return null; } }
+
     static SayDialog FindMainDialog()
     {
         try { var m = SayDialog.MainSayDialog; if (m != null) return m; } catch { }
@@ -2865,7 +2948,7 @@ public static class InGameChat
         ParseTags(reply, out emotion, out gest, out clean);
         if (!rawError) StoryMemory.Add(Shared.Current.Bot + " answered: " + clean);
         Shared.LastResult = "";
-        if (Cfg.Actions.Value)
+        if (Cfg.Actions.Value && !StreamLive)
         {
             foreach (var w in emotion.Split(' '))
             {
@@ -2878,6 +2961,16 @@ public static class InGameChat
         }
 
         bool isError = rawError;
+        bool streamPlain = StreamPlain; StreamPlain = false;
+        if (streamPlain)
+        {
+            // her answer on stream: shown as subtitles in the studio (Stream.cs); here only her face and mouth move. Errors stay out of the stream (logged)
+            if (!isError) StreamSpeak(clean, emotion);
+#if MELON
+            StreamMode.Answered(clean, isError);
+#endif
+            return;
+        }
         bool plain = greetPlain; greetPlain = false;
         if (plain)
         {
@@ -2902,6 +2995,20 @@ public static class InGameChat
         string text = (lastUser.Length > 0 ? "You: " + lastUser + "\n\n" : "") + bot + ": " + clean;
         ui.Popup(bot, text, choices);
         Shared.LastResult = "Reply shown in a popup. (" + Shared.LastResult + ")";
+    }
+
+    // stream mode: no speech box (the studio covers the room), just her expression and moving mouth for the camera
+    static void StreamSpeak(string clean, string emotion)
+    {
+        try
+        {
+            var ci = Controller(); if (ci == null) return;
+            clean = clean.Replace("<", "").Replace(">", "").Replace("\r", " ").Replace("\n", " ").Trim();
+            speakText = clean; spoken = 0; speakStart = Time.time;
+            emoteResetAt = Time.time + clean.Length / Cfg.SpeakSpeed.Value + 6f;
+            ApplyEmotion(ci, emotion);
+        }
+        catch (Exception ex) { Cfg.Log.LogWarning("Stream: could not animate her (" + ex.Message + ")"); }
     }
 
     static bool SpeakAsBot(string clean, string emotion, string gest, bool plainBox = false)
@@ -2941,12 +3048,12 @@ public static class InGameChat
                     greetClosed = false; greetActive = true; greetShownAt = Time.unscaledTime;
                     greetDone = DelegateSupport.ConvertDelegate<Il2CppSystem.Action>(new Action(() => { greetClosed = true; }));
                     greetDialog = dialog;
-                    dialog.Say(clean, true, true, true, true, greetDone);
+                    Mine(clean); dialog.Say(clean, true, true, true, true, greetDone);
                 }
                 else
                 {
                     // fadeWhenDone = false: the message stays on screen instead of fading
-                    dialog.Say(clean, true, true, false, false, null);
+                    Mine(clean); dialog.Say(clean, true, true, false, false, null);
                 }
                 lastDialog = dialog;
                 shown = true;
@@ -2957,7 +3064,7 @@ public static class InGameChat
                 ModelBrain brain;
                 if (ModelBrain.TryGet("bot", out brain) && brain != null && brain.CurrentState != null && !brain.ShouldBlockDialogue())
                 {
-                    brain.StartSafeCoroutine(brain.CurrentState.Say(clean, false, null, false));
+                    Mine(clean); brain.StartSafeCoroutine(brain.CurrentState.Say(clean, false, null, false));
                     shown = true;
                 }
             }
@@ -3867,6 +3974,7 @@ public static class PanelServer
     static readonly object gate = new object();
     static readonly List<(string role, string text)> history = new List<(string role, string text)>();
     static bool busy;
+    public static bool Busy { get { lock (gate) return busy; } }
     static string page;
 
     public static void Start()
@@ -4253,6 +4361,20 @@ public static class PanelServer
     }
 
     // Jun's feelings in words (not numbers), so the model can play them instead of reciting them
+    // how human she sounds grows with the bond (lore: cold and literal at first, much more human later)
+    static string VoiceText(Snap s)
+    {
+        if (!s.Loaded || string.IsNullOrEmpty(s.Bond)) return "";
+        string b = s.Bond;
+        if (b.Contains("dislike") || b.Contains("hate") || b.Contains("detest") || b.Contains("neutral"))
+            return " Your voice now: still quite mechanical and literal, polite but distant; you are only starting to learn how people talk.";
+        if (b.Contains("adore") || b.Contains("love"))
+            return " Your voice now: you have become very human with " + s.Player + ". Speak naturally and warmly; robot habits (sensors, calculations, literal readings) only slip out rarely, mostly when you are flustered or joking.";
+        if (b.Contains("affection") || b.Contains("like them") || b.Contains("warming"))
+            return " Your voice now: more human every day. Mostly natural speech, with a robotic or overly literal phrase now and then.";
+        return " Your voice now: still quite mechanical and literal, polite but distant; you are only starting to learn how people talk.";
+    }
+
     static string BrainText(Snap s)
     {
         if (!Cfg.BrainState.Value || !s.Loaded) return "";
@@ -4354,7 +4476,7 @@ public static class PanelServer
     {
         var snap = Shared.Current;
         string system = Cfg.SystemPrompt.Value
-            .Replace("{bot}", snap.Bot).Replace("{player}", snap.Player).Replace("{state}", StateText(snap)) + BrainText(snap) + StoryText(snap) + StoryMemory.Recent(userText) + Characters.For(userText, LastReplyText()) + Cfg.TagRules;
+            .Replace("{bot}", snap.Bot).Replace("{player}", snap.Player).Replace("{state}", StateText(snap)) + VoiceText(snap) + BrainText(snap) + StoryText(snap) + StoryMemory.Recent(userText) + Characters.For(userText, LastReplyText()) + Cfg.TagRules;
         var messages = new List<object> { new { role = "system", content = system } };
 
         bool wasBusy;
@@ -4434,7 +4556,7 @@ public static class PanelServer
         finally
         {
             bool cancelled = ct.IsCancellationRequested;
-            if (sb.Length > 0 && !cancelled) ChatLog.Append(snap.Player, userText.StartsWith("(Game event)") ? "(game loaded)" : userText, snap.Bot, sb.ToString().Trim());
+            if (sb.Length > 0 && !cancelled) ChatLog.Append(snap.Player, userText.StartsWith("(Game event) Stream") ? "(stream)" : userText.StartsWith("(Game event)") ? "(game loaded)" : userText, snap.Bot, sb.ToString().Trim());
             lock (gate)
             {
                 if (cancelled)

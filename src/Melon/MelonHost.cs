@@ -16,13 +16,13 @@ using UnityEngine;
 [assembly: System.Reflection.AssemblyVersion("1.0.1.0")]
 [assembly: System.Reflection.AssemblyFileVersion("1.0.1.0")]
 #elif PRIVATE_BUILD
-[assembly: MelonInfo(typeof(ModEntry), "Jun Link (private)", "1.2.0", "Original Flavour", "https://github.com/orgnlflvr/JunLink")]
-[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("1.2.0.0")]
+[assembly: MelonInfo(typeof(ModEntry), "Jun Link (private)", "1.3.0", "Original Flavour", "https://github.com/orgnlflvr/JunLink")]
+[assembly: System.Reflection.AssemblyVersion("1.3.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("1.3.0.0")]
 #else
-[assembly: MelonInfo(typeof(ModEntry), "Jun Link", "1.2.0", "Original Flavour", "https://github.com/orgnlflvr/JunLink")]
-[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("1.2.0.0")]
+[assembly: MelonInfo(typeof(ModEntry), "Jun Link", "1.3.0", "Original Flavour", "https://github.com/orgnlflvr/JunLink")]
+[assembly: System.Reflection.AssemblyVersion("1.3.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("1.3.0.0")]
 #endif
 [assembly: MelonGame("IncontinentCell", "My Dystopian Robot Girlfriend")]
 

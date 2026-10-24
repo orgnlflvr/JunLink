@@ -517,3 +517,32 @@ Thanks to the MDRG modding community for the idea and the trigger list.
 
 === Story Creator 1.0.1 ===
 - NEW: the same update notice as Jun Link 1.2.0 (Panel > CheckUpdates). (untested in game)
+
+=== Jun Link 1.3.0 ===
+- NEW: stream mode (Stream/Enabled, on by default). A "streamhub.ic" shortcut on Anon's PC desktop opens a made-up stream
+  site inside the game's own browser (title, description, Random title from the AI, stream rules, Go Live). Going live returns
+  to the room (the game only draws her there) and opens a full-screen studio drawn by the mod: video, live chat, channel row.
+  SFW; the game's own stream (StreamManager) is not touched. Confirmed in game (pc1..pc22 test builds).
+- Payout (Stream/Payout, on by default; the dev said they don't mind): when a stream ends the donations are paid out with
+  GameVariables.AddMoney, once per in-game day (a JunLink_StreamPaid_D<day> flag in the save), PayoutPercent (50) after the platform's cut,
+  up to PayoutDailyCap (0 = 15% of the current weekly rent). Shown on the summary and in her memory. (untested in game)
+- Scenes: Chatting, Close-up (her picture is rendered at about twice the screen height while live, anti-aliased), Fishing
+  (own minigame with our own pixel art: cast, bite, reel bar; fish sizes; the game's Sunny Beach picture as the spot, read
+  at runtime; a drawn lake as fallback), Mod Duty (spam/rude messages to click away in time; streaks; she thanks or teases
+  her moderator), BRB.
+- Chat: AI-written viewer messages (batch of 6, SFW filter), canned fallback, donations and superchats with colour tiers,
+  subscribers (kept in the save as a JunLink_StreamSubs_<n> story flag, so they follow your saves; stream_channel.txt
+  is only the starting count), gifted subs, milestones, likes, badges (MOD/SUB/NEW/VIP/GUEST), a pinned message.
+  Click a message and she answers that viewer next. Her answers go through the normal chat (one AI request at a time).
+- Visitors: guests from the city (Lady Annalie, Melissa, Landlord on by default; Big Daddy and Shanice are in stream_guests.txt but
+  switched off, since you meet them later in the story), lines
+  written by the AI in their voice with backup lines; two parody tech CEOs (fictional names) with one VIP superchat each.
+- Studio: game-style speech box beside her head, expressive faces and gestures, backgrounds (drawn, a snapshot of the
+  apartment without the HUD, own pictures in stream_backgrounds), the game's own buttons hidden while live, game dialogue
+  held back while live, stats menu, end-of-stream summary, fade back to the room.
+- Rules: she has to be politely dressed to go live (the game's own cover values: a top and a bottom; a dress counts as both;
+  underwear does not matter under clothes). Confirmed in game (2026-10-24).
+- Memory: after each stream the facts go into jun_memory.txt and she writes a short note (jun_streams.jsonl, shown on the
+  diary page under "Her streams"). Confirmed in game: she remembered the stream in chat (2026-10-24).
+- A more human Jun: her character text now keeps the android habits as a light flavour, and a new line in the prompt sets
+  her voice from the game's sympathy tier (cold and literal early, warm and natural at love). (untested in game)

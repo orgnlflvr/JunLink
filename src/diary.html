@@ -37,6 +37,10 @@ main{max-width:720px;margin:0 auto;padding:16px}
   <label class="mut" style="display:block;margin:0 0 8px"><input type="checkbox" id="padult"> Also write adult moments (consensual sex scenes only, 18+). Slower: many more sets to write.</label>
   <button id="pwrite">Write her personality</button> <span class="mut" id="pstatus"></span>
 </section>
+<section id="streams" style="max-width:720px;margin:14px auto 0;padding:0 16px;display:none">
+  <h2 style="font-size:15px;margin:6px 0 10px;letter-spacing:.04em;text-transform:uppercase">Her streams</h2>
+  <div id="slist"></div>
+</section>
 <main id="list"><div class="empty">Loading...</div></main>
 <script>
 const $=id=>document.getElementById(id);
@@ -51,6 +55,11 @@ async function load(){
   $('write').disabled=!(j.day>0)||j.writing;
   $('write').textContent=j.writing?'she is writing...':"Write today's entry now";
   $('status').textContent=j.enabled?(j.status||''):'diary is off (Diary/Enabled in the cfg)';
+  const sk=JSON.stringify(j.streams||[]);
+  if(sk!==window._sk){ window._sk=sk; const ss=j.streams||[];
+    $('streams').style.display=ss.length?'':'none';
+    $('slist').innerHTML=ss.slice(0,10).map(s=>'<div class="entry"><h2>'+esc(s.title||'Stream')+'</h2><div class="when">day '+s.day+' · '+esc(s.written)+'</div>'+
+      (s.note?'<p>'+esc(s.note)+'</p>':'')+'<div class="mut">'+esc(s.facts)+'</div></div>').join(''); }
   const key=JSON.stringify(j.entries);
   if(key!==last){
     last=key;
